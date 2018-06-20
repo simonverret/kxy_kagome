@@ -1,5 +1,6 @@
 # -*- coding: Latin-1 -*-
 
+# salut simon!
 ## Modules <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<#
 import numpy as np
 from numpy import cos, sin, pi, sqrt, exp, arctan2
