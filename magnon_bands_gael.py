@@ -10,6 +10,7 @@ from functools import partial
 from scipy import integrate, optimize
 from numpy.linalg import multi_dot
 from lmfit import minimize, Parameters, fit_report
+np.set_printoptions(6,suppress=True,sign="+",floatmode="fixed")
 ##>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
 
 ## Universal Constant :::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
@@ -28,22 +29,22 @@ kB = 1
 J = kB * T
 D = 0.2 * J
 
-la_ini = 0
-chi_up_ini = -1
-chi_dn_ini = -1
+la_ini =      3.9385
+chi_up_ini = -0.81067
+chi_dn_ini = -0.79811
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
 # Contains the hexago volume in a rectangle of side pi x (2*pi/sqrt(3))
-kx = np.linspace(-pi / 3, 2 * pi / 3, 10)
-ky = np.linspace(-pi / sqrt(3), pi / sqrt(3), 10)
+kx = np.linspace(-pi / 3, 2 * pi / 3, 33)
+ky = np.linspace(-pi / sqrt(3), pi / sqrt(3), 33)
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
 ## Full Hamiltonian
 def hamiltonian(kx, ky, la, s, B, ts):
 
-    eta1 = - np.array([1, sqrt(3)]) / 2
+    eta1 = -1*np.array([1, sqrt(3)]) / 2
     eta2 = np.array([1, 0])
     eta3 = np.array([-1, sqrt(3)]) / 2
 
@@ -168,8 +169,8 @@ def residual_lambda(pars, kx, ky, B, ts_up, ts_dn, T):
 
     laa = pars["laa"].value
 
-    Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = diag_func(kx, ky, laa, s = 1, B = B, ts = ts_up)
-    Enks_dn, Enks_ndiag_dn, Vnks_dn, la_min_dn = diag_func(kx, ky, laa, s = -1, B = B, ts = ts_dn)
+    Enks_up = diag_func(kx, ky, laa, s = 1, B = B, ts = ts_up)[0]
+    Enks_dn = diag_func(kx, ky, laa, s = -1, B = B, ts = ts_dn)[0]
 
     S = 1 / 2
     residual_S = compute_S(Enks_up, Enks_dn, T) - S
@@ -181,25 +182,26 @@ def residual_lambda(pars, kx, ky, B, ts_up, ts_dn, T):
 ## Fit function
 def fit_function(pars, kx, ky, B, J, D, T):
 
-
     la = pars["la"].value
     chi_up = pars["chi_up"].value
     chi_dn = pars["chi_dn"].value
-
-    print("OLD (lambda, chi_up, chi_dn) = (" +
-         r"{0:.4e}".format(la) + ", "
-       + r"{0:.4e}".format(chi_up) + ", "
-       + r"{0:.4e}".format(chi_dn) + ")")
 
     # Compute ts_up & ts_dn
     ts_up = compute_ts(chi_up, chi_dn, J, D, 1)
     ts_dn = compute_ts(chi_up, chi_dn, J, D, -1)
 
     # Redefine minimum for lambda
-    Enks_up, la_min_up = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)[0::3]
-    Enks_dn, la_min_dn = diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)[0::3]
+    Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)
+    Enks_dn, Enks_ndiag_dn, Vnks_dn, la_min_dn = diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)
+    S = compute_S(Enks_up, Enks_dn, T)
+    (chi_up_new, chi_dn_new) = compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T)
+    print("\n")
+    print("INI : ",np.array([la,chi_up,chi_dn]))
+    print("RES : ",np.array([S,chi_up_new,chi_dn_new]))
+    print("optimizing lambda")
+    
     laa_min = np.min([la_min_up, la_min_dn])
-
+    
     # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
     # Compute optimal lambda for these chi_up _dn values
     parameters_laa = Parameters()
@@ -220,19 +222,21 @@ def fit_function(pars, kx, ky, B, J, D, T):
     residual_chi_up = chi_up - chi_up_new
     residual_chi_dn = chi_dn - chi_dn_new
 
-    print("residual (lambda, chi_up, chi_dn) = ("
-       + r"{0:.3e}".format(residual_chi_up) + ", "
-       + r"{0:.3e}".format(residual_chi_dn) + ")")
-
-    print("NEW (lambda, chi_up, chi_dn) = (" +
-         r"{0:.4e}".format(la_new) + ", "
-       + r"{0:.4e}".format(chi_up_new) + ", "
-       + r"{0:.4e}".format(chi_dn_new) + ")")
+    print("NEW : ",np.array([S,chi_up_new,chi_dn_new]))
+    print("residual chi : ", np.array([residual_chi_up, residual_chi_dn]))
 
 
     return (residual_chi_up, residual_chi_dn)
 
 
+#### UNCOMMENT FOR SINGLE OUTPUT AND EXIT
+la_min = -1000
+parameters = Parameters()
+parameters.add("la", value = la_ini, min = la_min, max = 100, vary = False)
+parameters.add("chi_up", value = chi_up_ini, min = -30, max = 0, vary = True)
+parameters.add("chi_dn", value = chi_dn_ini, min = -30, max = 0, vary = True)
+fit_function(parameters,kx, ky, B, J, D, T)
+exit(1)
 
 ## Create the fit parameters ##
 Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = diag_func(kx, ky, la_ini, s = 1, B = B, ts = ts_up_ini)

@@ -20,16 +20,15 @@ D=0.2
 B=0.01
 T=1
 resX = 33
-initLamda =  2.59
-initChiUp = -0.57
-initChiDn = -0.58
+initLamda =  3.9385
+initChiUp = -0.81067
+initChiDn = -0.79811
 
 resY = resX # previously squarer: int( resX * 2/np.sqrt(3) )
 Nk = resX*resY 
 KX= np.linspace( -np.pi/3.         , 2*np.pi/3.       , resX ) # the hexagonal BZ is periodic
 KY= np.linspace( -np.pi/np.sqrt(3) , np.pi/np.sqrt(3) , resY ) # so one can use a rectangle.
 unitVolume = np.pi * 2*np.pi/np.sqrt(3) / Nk
-print("dk volume is : "+str(unitVolume))
 
 def hopping(sigma,chiSig,chiOpp):
     return J*(chiSig+chiOpp) - 1j*sigma*D*chiOpp
@@ -52,7 +51,7 @@ def eighOnMesh(sigma,lamda,hop):
     for i,kx in enumerate(KX):
         for j,ky in enumerate(KY):
             hamiltonianOnMesh[i,j,:,:] = hamiltonian(kx,ky,sigma,lamda,hop)
-    print(hamiltonianOnMesh[10,10,:,:])
+    # print(hamiltonianOnMesh[10,10,:,:])
     return np.linalg.eigh(hamiltonianOnMesh)
 
 def bose(energ,beta=1/T):
@@ -76,40 +75,46 @@ def selfConsistCond(varSet):
     # Doki et al., Universal..., 2018, sup. mat. Eq.(S6b)
     fnkUp = (bandsUp-(lamda-B)) # =the eigenvalues of the hopping matrix
     fnkDn = (bandsDn-(lamda+B))
-    resChiUp = dummyIntegral( fnkUp * bose(bandsUp) )/(2*np.abs(tUp))
-    resChiDn = dummyIntegral( fnkDn * bose(bandsDn) )/(2*np.abs(tDn))
+    resChiUp = dummyIntegral( fnkUp * bose(bandsUp) )/(np.abs(tUp))
+    resChiDn = dummyIntegral( fnkDn * bose(bandsDn) )/(np.abs(tDn))
 
     conditionlamda = 2*S-1
     conditionChiUp = resChiUp-chiUp
     conditionChiDn = resChiDn-chiDn
 
 
-    print("hopping up   : "+str(tUp))
-    print("hopping down : "+str(tDn))
-    print("bands :\n",bandsUp[10,10])
-    print("fnkup :\n",fnkUp[10,10])
-    print("fnkdn :\n",fnkDn[10,10])
+    # print("hopping up   : "+str(tUp))
+    # print("hopping down : "+str(tDn))
+    # print("bands :\n",bandsUp[10,10])
+    # print("fnkup :\n",fnkUp[10,10])
+    # print("fnkdn :\n",fnkDn[10,10])
 
 
-    print("lambda = "+"{:<8}".format(str(lamda))+" -->      S = "+str(S))
-    print("chi_up = "+"{:<8}".format(str(chiUp))+" --> chi_up = "+str(resChiUp))
-    print("chi_dn = "+"{:<8}".format(str(chiDn))+" --> chi_dn = "+str(resChiDn))
-    print("condition  : ",np.array([conditionlamda,conditionChiUp,conditionChiDn],dtype=complex))
+    # print("lambda = "+"{:<8}".format(str(lamda))+" -->      S = "+str(S))
+    # print("chi_up = "+"{:<8}".format(str(chiUp))+" --> chi_up = "+str(resChiUp))
+    # print("chi_dn = "+"{:<8}".format(str(chiDn))+" --> chi_dn = "+str(resChiDn))
+    # print("condition  : ",np.array([conditionlamda,conditionChiUp,conditionChiDn],dtype=complex))
     
+    print(np.array([lamda,chiUp,chiDn]))
+    print(np.array([S,resChiUp,resChiDn]))
+
     return np.array([conditionlamda,conditionChiUp,conditionChiDn])
 
-# sol_object = optimize.root(selfConsistCond, np.array([initLamda,initChiUp,initChiDn]), method = 'anderson')
-# print("\n The solution is")
-# print(sol_object.x)
-# sollamda = sol_object.x[0]
-# solChiUp = sol_object.x[1]
-# solChiDn = sol_object.x[2]
-
+#### UNCOMMENT FOR SINGLE INIT RUN and exit
 sollamda = initLamda
 solChiUp = initChiUp
 solChiDn = initChiDn
-
 selfConsistCond([initLamda,initChiUp,initChiDn])
+exit(1)
+
+
+sol_object = optimize.root(selfConsistCond, np.array([initLamda,initChiUp,initChiDn]), method = 'anderson')
+print("\n The solution is")
+print(sol_object.x)
+sollamda = sol_object.x[0]
+solChiUp = sol_object.x[1]
+solChiDn = sol_object.x[2]
+
 
 tUp = hopping( 1,solChiUp,solChiDn)
 tDn = hopping(-1,solChiDn,solChiUp)
