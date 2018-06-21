@@ -121,11 +121,9 @@ def n_B(x):
     index_pos = x > 0
     index_neg = x <= 0
 
-    x_pos = x[index_pos]
-
     nB = np.zeros(np.shape(x))
 
-    nB[index_pos] = 1 / (exp(x_pos) - 1)
+    nB[index_pos] = 1 / (exp(x[index_pos]) - 1)
     nB[index_neg] = 0
 
     return nB
@@ -140,7 +138,7 @@ def compute_S(Enks_up, Enks_dn, T):
     sum_s_up = np.sum(n_B(Enks_up[:,:,0] / (kB * T))) + np.sum(n_B(Enks_up[:,:,1] / (kB * T))) + np.sum(n_B(Enks_up[:,:,2] / (kB * T)))
     sum_s_dn = np.sum(n_B(Enks_dn[:,:,0] / (kB * T))) + np.sum(n_B(Enks_dn[:,:,1] / (kB * T))) + np.sum(n_B(Enks_dn[:,:,2] / (kB * T)))
 
-    S = (sum_s_up + sum_s_dn) / Nt # * (1 / 2)
+    S = (sum_s_up + sum_s_dn) / Nt
 
     return S
 
@@ -224,8 +222,8 @@ def fit_function(pars, kx, ky, B, J, D, T):
        + r"{0:.3e}".format(residual_chi_up) + ", "
        + r"{0:.3e}".format(residual_chi_dn) + ")")
 
-    print("NEW (lambda, chi_up, chi_dn) = (" +
-         r"{0:.4e}".format(la_new) + ", "
+    print("NEW (lambda, chi_up, chi_dn) = ("
+       + r"{0:.4e}".format(la_new) + ", "
        + r"{0:.4e}".format(chi_up_new) + ", "
        + r"{0:.4e}".format(chi_dn_new) + ")")
 
@@ -242,10 +240,10 @@ la_min = np.min([la_min_up, la_min_dn])
 
 parameters = Parameters()
 parameters.add("la", value = la_min*1.1, min = la_min, max = 100, vary = False)
-parameters.add("chi_up", value = chi_up_ini, min = -30, max = 0, vary = True)
-parameters.add("chi_dn", value = chi_dn_ini, min = -30, max = 0, vary = True)
+parameters.add("chi_up", value = chi_up_ini, min = -3, max = -0.1, vary = True)
+parameters.add("chi_dn", value = chi_dn_ini, min = -3, max = -0.1, vary = True)
 
-## Carry out the fit ##
+# Carry out the fit ##
 
 out = minimize(fit_function, parameters, args=(kx, ky, B, J, D, T), method="least_squares")
 
@@ -301,35 +299,35 @@ mpl.rcParams['pdf.fonttype'] = 3  # Output Type 3 (Type3) or Type 42 (TrueType),
                                     # editing the text in illustrator
 
 
-## S vs lambda ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+# ## S vs lambda ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
-fig , axes = plt.subplots(1,1, figsize=(9.2, 5.6)) # figsize is w x h in inch of figure
-fig.subplots_adjust(left = 0.17, right = 0.81, bottom = 0.18, top = 0.95) # adjust the box of axes regarding the figure size
+# fig , axes = plt.subplots(1,1, figsize=(9.2, 5.6)) # figsize is w x h in inch of figure
+# fig.subplots_adjust(left = 0.17, right = 0.81, bottom = 0.18, top = 0.95) # adjust the box of axes regarding the figure size
 
-for tick in axes.xaxis.get_major_ticks():
-    tick.set_pad(7)
-for tick in axes.yaxis.get_major_ticks():
-    tick.set_pad(8)
+# for tick in axes.xaxis.get_major_ticks():
+#     tick.set_pad(7)
+# for tick in axes.yaxis.get_major_ticks():
+#     tick.set_pad(8)
 
-axes.axhline(y = 0.5, ls = "--", c = "k", linewidth = 0.6)
+# axes.axhline(y = 0.5, ls = "--", c = "k", linewidth = 0.6)
 
-#///// Plot /////#
+# #///// Plot /////#
 
-la_array = np.arange(la*0.9, la*1.1, 0.01)
-S_array = np.zeros(len(la_array))
+# la_array = np.arange(la*0.9, la*1.1, 0.01)
+# S_array = np.zeros(len(la_array))
 
-for i, laa in enumerate(la_array):
-    Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = diag_func(kx, ky, laa, s = 1, B = B, ts = ts_up)
-    Enks_dn, Enks_ndiag_dn, Vnks_dn, la_min_dn = diag_func(kx, ky, laa, s = -1, B = B, ts = ts_dn)
-    S_array[i] = compute_S(Enks_up, Enks_dn, T)
+# for i, laa in enumerate(la_array):
+#     Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = diag_func(kx, ky, laa, s = 1, B = B, ts = ts_up)
+#     Enks_dn, Enks_ndiag_dn, Vnks_dn, la_min_dn = diag_func(kx, ky, laa, s = -1, B = B, ts = ts_dn)
+#     S_array[i] = compute_S(Enks_up, Enks_dn, T)
 
-line = axes.plot(la_array, S_array)
-plt.setp(line, ls = "--", c = '#F60000', lw = 3, marker = "o", mfc = 'w', ms = 6.5, mec = '#F60000', mew = 2.5)
+# line = axes.plot(la_array, S_array)
+# plt.setp(line, ls = "--", c = '#F60000', lw = 3, marker = "o", mfc = 'w', ms = 6.5, mec = '#F60000', mew = 2.5)
 
-axes.locator_params(axis = 'x', nbins = 6)
-axes.locator_params(axis = 'y', nbins = 6)
-axes.set_xlabel(r"$\lambda$", labelpad = 8)
-axes.set_ylabel(r"$S$", labelpad = 8)
+# axes.locator_params(axis = 'x', nbins = 6)
+# axes.locator_params(axis = 'y', nbins = 6)
+# axes.set_xlabel(r"$\lambda$", labelpad = 8)
+# axes.set_ylabel(r"$S$", labelpad = 8)
 
 
 
@@ -361,41 +359,41 @@ axes.set_ylabel(r"$S$", labelpad = 8)
 
 
 
-## Energy vs kx ky = 0:::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+# ## Energy vs kx ky = 0:::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
-fig , axes = plt.subplots(1,1, figsize=(9.2, 5.6)) # figsize is w x h in inch of figure
-fig.subplots_adjust(left = 0.17, right = 0.81, bottom = 0.18, top = 0.95) # adjust the box of axes regarding the figure size
+# fig , axes = plt.subplots(1,1, figsize=(9.2, 5.6)) # figsize is w x h in inch of figure
+# fig.subplots_adjust(left = 0.17, right = 0.81, bottom = 0.18, top = 0.95) # adjust the box of axes regarding the figure size
 
-for tick in axes.xaxis.get_major_ticks():
-    tick.set_pad(7)
-for tick in axes.yaxis.get_major_ticks():
-    tick.set_pad(8)
+# for tick in axes.xaxis.get_major_ticks():
+#     tick.set_pad(7)
+# for tick in axes.yaxis.get_major_ticks():
+#     tick.set_pad(8)
 
-#///// Plot /////#
+# #///// Plot /////#
 
-Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = diag_func(kx, np.zeros(1), la, s = 1, B = B, ts = ts_up)
+# Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = diag_func(kx, np.zeros(1), la, s = 1, B = B, ts = ts_up)
 
-line = axes.plot(kx, Enks_up[:,0, 0])
-plt.setp(line, ls = "-", c = '#FF0000', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
-line = axes.plot(kx, Enks_up[:,0, 1])
-plt.setp(line, ls = "-", c = '#00E054', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#00E054', mew = 2.5)
-line = axes.plot(kx, Enks_up[:,0, 2])
-plt.setp(line, ls = "-", c = '#7D44FF', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#7D44FF', mew = 2.5)
+# line = axes.plot(kx, Enks_up[:,0, 0])
+# plt.setp(line, ls = "-", c = '#FF0000', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
+# line = axes.plot(kx, Enks_up[:,0, 1])
+# plt.setp(line, ls = "-", c = '#00E054', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#00E054', mew = 2.5)
+# line = axes.plot(kx, Enks_up[:,0, 2])
+# plt.setp(line, ls = "-", c = '#7D44FF', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#7D44FF', mew = 2.5)
 
-Enks_dn, Enks_ndiag_dn, Vnks_dn, la_min_dn = diag_func(kx, np.zeros(1), la, s = 1, B = B, ts = ts_dn)
+# Enks_dn, Enks_ndiag_dn, Vnks_dn, la_min_dn = diag_func(kx, np.zeros(1), la, s = 1, B = B, ts = ts_dn)
 
-line = axes.plot(kx, Enks_dn[:,0, 0])
-plt.setp(line, ls = "--", c = '#FF0000', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
-line = axes.plot(kx, Enks_dn[:,0, 1])
-plt.setp(line, ls = "--", c = '#00E054', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#00E054', mew = 2.5)
-line = axes.plot(kx, Enks_dn[:,0, 2])
-plt.setp(line, ls = "--", c = '#7D44FF', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#7D44FF', mew = 2.5)
+# line = axes.plot(kx, Enks_dn[:,0, 0])
+# plt.setp(line, ls = "--", c = '#FF0000', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
+# line = axes.plot(kx, Enks_dn[:,0, 1])
+# plt.setp(line, ls = "--", c = '#00E054', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#00E054', mew = 2.5)
+# line = axes.plot(kx, Enks_dn[:,0, 2])
+# plt.setp(line, ls = "--", c = '#7D44FF', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#7D44FF', mew = 2.5)
 
-axes.set_xlim(0, 2*np.pi/3)
-axes.locator_params(axis = 'x', nbins = 6)
-axes.locator_params(axis = 'y', nbins = 6)
-axes.set_xlabel(r"$k_{\rm x}$", labelpad = 8)
-axes.set_ylabel(r"$E$", labelpad = 8)
+# axes.set_xlim(0, 2*np.pi/3)
+# axes.locator_params(axis = 'x', nbins = 6)
+# axes.locator_params(axis = 'y', nbins = 6)
+# axes.set_xlabel(r"$k_{\rm x}$", labelpad = 8)
+# axes.set_ylabel(r"$E$", labelpad = 8)
 
 
 
@@ -420,6 +418,111 @@ axes.set_ylabel(r"$E$", labelpad = 8)
 # axes.set_zlabel(r"$E$", labelpad = 20)
 
 # ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+
+
+
+
+## diff_chi vs chi ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+
+span = 0.05
+# la = 3
+chi_up_array = np.arange(-1.2, 0, 0.05)
+chi_dn_array = np.arange(-1.2, 0, 0.05)
+
+ts_up_array = np.zeros(np.shape(chi_up_array))
+ts_dn_array = np.zeros(np.shape(chi_dn_array))
+
+diff_chi_up = np.zeros((len(chi_up_array), len(chi_dn_array)), dtype = float)
+diff_chi_dn = np.zeros((len(chi_dn_array), len(chi_dn_array)), dtype = float)
+
+chi_up_0_x = []
+chi_up_0_y = []
+chi_dn_0_x = []
+chi_dn_0_y = []
+
+for i, chi_up in enumerate(chi_up_array):
+    for j, chi_dn in enumerate(chi_dn_array):
+
+        ts_up = compute_ts(chi_up, chi_dn, J, D, 1)
+        ts_dn = compute_ts(chi_up, chi_dn, J, D, -1)
+
+        Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)
+        Enks_dn, Enks_ndiag_dn, Vnks_dn, la_min_dn = diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)
+
+        (chi_up_new, chi_dn_new) = compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T)
+
+        diff_chi_up[i, j] = chi_up_new - chi_up
+        diff_chi_dn[i, j] = chi_dn_new - chi_dn
+
+        if (diff_chi_up[i, j] < span) * (diff_chi_up[i, j] > -span):
+            chi_up_0_x.append(chi_up)
+            chi_up_0_y.append(chi_dn)
+
+        if (diff_chi_dn[i, j] < span) * (diff_chi_dn[i, j] > -span):
+            chi_dn_0_x.append(chi_up)
+            chi_dn_0_y.append(chi_dn)
+
+
+
+
+
+## chi for diff_chi = 0 :::::::::::::::::::::::::::::::::::::::::::::::::::::#
+
+fig , axes = plt.subplots(1,1, figsize=(9.2, 5.6)) # figsize is w x h in inch of figure
+fig.subplots_adjust(left = 0.17, right = 0.81, bottom = 0.18, top = 0.95) # adjust the box of axes regarding the figure size
+
+for tick in axes.xaxis.get_major_ticks():
+    tick.set_pad(7)
+for tick in axes.yaxis.get_major_ticks():
+    tick.set_pad(8)
+
+#///// Plot /////#
+
+line = axes.plot(chi_up_0_x, chi_up_0_y)
+plt.setp(line, ls = "", c = 'r', lw = 3, marker = "o", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
+line = axes.plot(chi_dn_0_x, chi_dn_0_y)
+plt.setp(line, ls = "", c = 'b', lw = 3, marker = "o", mfc = 'w', ms = 6.5, mec = '#00E054', mew = 2.5)
+
+# axes.set_xlim(0, 2*np.pi/3)
+axes.locator_params(axis = 'x', nbins = 6)
+axes.locator_params(axis = 'y', nbins = 6)
+axes.set_xlabel(r"$\chi_{\rm \uparrow}$", labelpad = 8)
+axes.set_ylabel(r"$\chi_{\rm \downarrow}$", labelpad = 8)
+
+
+## 3D diff_chi vs chi :::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+
+fig = plt.figure(figsize=(9.2, 5.6))
+axes = fig.add_subplot(111, projection='3d')
+
+# ij_index_up = (diff_chi_up > 0.05)
+# ij_index_dn = (diff_chi_dn > 0.05)
+
+# diff_chi_up[ij_index_up] = np.nan
+# diff_chi_dn[ij_index_dn] = np.nan
+
+# ij_index_up = (diff_chi_up < -0.05)
+# ij_index_dn = (diff_chi_dn < -0.05)
+
+# diff_chi_up[ij_index_up] = np.nan
+# diff_chi_dn[ij_index_dn] = np.nan
+
+
+chii_up, chii_dn = np.meshgrid(chi_up_array, chi_dn_array, indexing = 'xy')
+axes.scatter(chii_up, chii_dn, diff_chi_up, color = "#FF5555")
+axes.scatter(chii_up, chii_dn, diff_chi_dn, color = "#511CFF")
+# axes.plot_surface(chii_up, chii_dn, np.zeros((len(chi_up_array), len(chi_dn_array)), dtype = float), rstride=1, cstride=1, alpha=1, color = "k")
+
+
+# axes.set_xlim3d(-np.pi, np.pi)
+# axes.set_ylim3d(-np.pi, np.pi)
+axes.set_zlim3d(-1, 1)
+
+axes.set_xlabel(r"$\chi_{\rm \uparrow}$", labelpad = 20)
+axes.set_ylabel(r"$\chi_{\rm \downarrow}$", labelpad = 20)
+axes.set_zlabel(r"$\Delta\chi$", labelpad = 20)
+
+## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
 plt.show()
 
