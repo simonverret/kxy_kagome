@@ -1,6 +1,5 @@
 # -*- coding: Latin-1 -*-
 
-# salut simon!
 ## Modules <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<#
 import numpy as np
 from numpy import cos, sin, pi, sqrt, exp, arctan2
@@ -36,8 +35,8 @@ chi_dn_ini = -1
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
 # Contains the hexago volume in a rectangle of side pi x (2*pi/sqrt(3))
-kx = np.linspace(-pi / 3, 2 * pi / 3, 20)
-ky = np.linspace(-pi / sqrt(3), pi / sqrt(3), 20)
+kx = np.linspace(-pi / 3, 2 * pi / 3, 10)
+ky = np.linspace(-pi / sqrt(3), pi / sqrt(3), 10)
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
@@ -103,10 +102,11 @@ def diag_func(kx, ky, la, s, B, ts):
 ## Hopping term
 def compute_ts(chi_up, chi_dn, J, D, s):
 
-    if s > 0:
+    if s == 1:
         return J * ( chi_up + chi_dn ) - 1j * s * D * chi_dn
     else:
         return J * ( chi_up + chi_dn ) - 1j * s * D * chi_up
+
 
 ts_up_ini = compute_ts(chi_up_ini, chi_dn_ini, J, D, 1)
 ts_dn_ini = compute_ts(chi_up_ini, chi_dn_ini, J, D, -1)
@@ -135,18 +135,18 @@ def n_B(x):
 ## Compute S = sum(Enks/kB*T)
 def compute_S(Enks_up, Enks_dn, T):
 
-    Nt = np.size(Enks_up) # * 3 * 2
+    Nt = np.shape(Enks_up)[0] * np.shape(Enks_up)[1]
 
     sum_s_up = np.sum(n_B(Enks_up[:,:,0] / (kB * T))) + np.sum(n_B(Enks_up[:,:,1] / (kB * T))) + np.sum(n_B(Enks_up[:,:,2] / (kB * T)))
     sum_s_dn = np.sum(n_B(Enks_dn[:,:,0] / (kB * T))) + np.sum(n_B(Enks_dn[:,:,1] / (kB * T))) + np.sum(n_B(Enks_dn[:,:,2] / (kB * T)))
 
-    S = (sum_s_up + sum_s_dn) / Nt
+    S = (sum_s_up + sum_s_dn) / Nt # * (1 / 2)
 
     return S
 
 def compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T):
 
-    Nt = np.size(Enks_up) # * 3 * 2
+    Nt = np.shape(Enks_up)[0] * np.shape(Enks_up)[1]
 
     sum_s_up = np.sum(Enks_ndiag_up[:,:,0] * n_B(Enks_up[:,:,0] / (kB * T))) \
              + np.sum(Enks_ndiag_up[:,:,1] * n_B(Enks_up[:,:,1] / (kB * T))) \
@@ -158,9 +158,6 @@ def compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T)
 
     chi_up = sum_s_up / Nt / np.absolute(ts_up)
     chi_dn = sum_s_dn / Nt / np.absolute(ts_dn)
-
-    # chi_up = sum_s_up / Nt / np.real(2 * ts_up)
-    # chi_dn = sum_s_dn / Nt / np.real(2 * ts_dn)
 
     return (chi_up, chi_dn)
 
@@ -184,47 +181,56 @@ def residual_lambda(pars, kx, ky, B, ts_up, ts_dn, T):
 ## Fit function
 def fit_function(pars, kx, ky, B, J, D, T):
 
+
     la = pars["la"].value
     chi_up = pars["chi_up"].value
     chi_dn = pars["chi_dn"].value
-    print("la : " + str(pars["la"].value) + " chi_up : " + str(pars["chi_up"].value) + " chi_dn : " + str(pars["chi_dn"].value))
+
+    print("OLD (lambda, chi_up, chi_dn) = (" +
+         r"{0:.4e}".format(la) + ", "
+       + r"{0:.4e}".format(chi_up) + ", "
+       + r"{0:.4e}".format(chi_dn) + ")")
 
     # Compute ts_up & ts_dn
     ts_up = compute_ts(chi_up, chi_dn, J, D, 1)
     ts_dn = compute_ts(chi_up, chi_dn, J, D, -1)
 
-    # Compute eigenvalues
-    Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)
-    Enks_dn, Enks_ndiag_dn, Vnks_dn, la_min_dn = diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)
-
-    # # Redefine minimum for lambda
-
+    # Redefine minimum for lambda
+    Enks_up, la_min_up = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)[0::3]
+    Enks_dn, la_min_dn = diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)[0::3]
     laa_min = np.min([la_min_up, la_min_dn])
 
+    # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+    # Compute optimal lambda for these chi_up _dn values
     parameters_laa = Parameters()
     parameters_laa.add("laa", value = la, min = laa_min*1.1, max = 100, vary = True)
+
     out_laa = minimize(residual_lambda, parameters_laa, args=(kx, ky, B, ts_up, ts_dn, T), method="least_squares")
+
     pars["la"].value = out_laa.params["laa"].value
-    pars["la"].min = out_laa.params["laa"].value
-    la = out_laa.params["laa"].value
-    print(pars["la"].value)
+    la_new = out_laa.params["laa"].value
+    # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
-    Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)
-    Enks_dn, Enks_ndiag_dn, Vnks_dn, la_min_dn = diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)
-
-    pars["la"].min = laa_min
-
-    # Compute residual_S
-    residual_S = compute_S(Enks_up, Enks_dn, T) - 1 / 2
+    # Compute eigenvalues
+    Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = diag_func(kx, ky, la_new, s = 1, B = B, ts = ts_up)
+    Enks_dn, Enks_ndiag_dn, Vnks_dn, la_min_dn = diag_func(kx, ky, la_new, s = -1, B = B, ts = ts_dn)
 
     # Compute residual_Chi
     (chi_up_new, chi_dn_new) = compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T)
     residual_chi_up = chi_up - chi_up_new
     residual_chi_dn = chi_dn - chi_dn_new
 
-    print([residual_S, residual_chi_up, residual_chi_dn])
+    print("residual (lambda, chi_up, chi_dn) = ("
+       + r"{0:.3e}".format(residual_chi_up) + ", "
+       + r"{0:.3e}".format(residual_chi_dn) + ")")
 
-    return (residual_S, residual_chi_up, residual_chi_dn)
+    print("NEW (lambda, chi_up, chi_dn) = (" +
+         r"{0:.4e}".format(la_new) + ", "
+       + r"{0:.4e}".format(chi_up_new) + ", "
+       + r"{0:.4e}".format(chi_dn_new) + ")")
+
+
+    return (residual_chi_up, residual_chi_dn)
 
 
 
@@ -237,7 +243,7 @@ la_min = np.min([la_min_up, la_min_dn])
 parameters = Parameters()
 parameters.add("la", value = la_min*1.1, min = la_min, max = 100, vary = False)
 parameters.add("chi_up", value = chi_up_ini, min = -30, max = 0, vary = True)
-parameters.add("chi_dn", value = chi_up_ini, min = -30, max = 0, vary = True)
+parameters.add("chi_dn", value = chi_dn_ini, min = -30, max = 0, vary = True)
 
 ## Carry out the fit ##
 
@@ -370,20 +376,20 @@ for tick in axes.yaxis.get_major_ticks():
 Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = diag_func(kx, np.zeros(1), la, s = 1, B = B, ts = ts_up)
 
 line = axes.plot(kx, Enks_up[:,0, 0])
-plt.setp(line, ls = "-", c = '#FF0000', lw = 1, marker = "", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
+plt.setp(line, ls = "-", c = '#FF0000', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
 line = axes.plot(kx, Enks_up[:,0, 1])
-plt.setp(line, ls = "-", c = '#00E054', lw = 1, marker = "", mfc = 'w', ms = 6.5, mec = '#00E054', mew = 2.5)
+plt.setp(line, ls = "-", c = '#00E054', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#00E054', mew = 2.5)
 line = axes.plot(kx, Enks_up[:,0, 2])
-plt.setp(line, ls = "-", c = '#7D44FF', lw = 1, marker = "", mfc = 'w', ms = 6.5, mec = '#7D44FF', mew = 2.5)
+plt.setp(line, ls = "-", c = '#7D44FF', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#7D44FF', mew = 2.5)
 
 Enks_dn, Enks_ndiag_dn, Vnks_dn, la_min_dn = diag_func(kx, np.zeros(1), la, s = 1, B = B, ts = ts_dn)
 
 line = axes.plot(kx, Enks_dn[:,0, 0])
-plt.setp(line, ls = "--", c = '#FF0000', lw = 1, marker = "", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
+plt.setp(line, ls = "--", c = '#FF0000', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
 line = axes.plot(kx, Enks_dn[:,0, 1])
-plt.setp(line, ls = "--", c = '#00E054', lw = 1, marker = "", mfc = 'w', ms = 6.5, mec = '#00E054', mew = 2.5)
+plt.setp(line, ls = "--", c = '#00E054', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#00E054', mew = 2.5)
 line = axes.plot(kx, Enks_dn[:,0, 2])
-plt.setp(line, ls = "--", c = '#7D44FF', lw = 1, marker = "", mfc = 'w', ms = 6.5, mec = '#7D44FF', mew = 2.5)
+plt.setp(line, ls = "--", c = '#7D44FF', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#7D44FF', mew = 2.5)
 
 axes.set_xlim(0, 2*np.pi/3)
 axes.locator_params(axis = 'x', nbins = 6)
@@ -393,27 +399,27 @@ axes.set_ylabel(r"$E$", labelpad = 8)
 
 
 
-## Energy bands :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+# ## Energy bands :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
-fig = plt.figure(figsize=(9.2, 5.6))
-axes = fig.add_subplot(111, projection='3d')
+# fig = plt.figure(figsize=(9.2, 5.6))
+# axes = fig.add_subplot(111, projection='3d')
 
-Enks, Enks_ndiag, Vnks, la_min = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)
+# Enks, Enks_ndiag, Vnks, la_min = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)
 
-kxx, kyy = np.meshgrid(kx, ky, indexing = 'xy')
-axes.plot_surface(kxx, kyy, Enks[:, :, 0], rstride=1, cstride=1, alpha=1, color = "#FF0000")
-axes.plot_surface(kxx, kyy, Enks[:, :, 1], rstride=1, cstride=1, alpha=1, color = "#00E054")
-axes.plot_surface(kxx, kyy, Enks[:, :, 2], rstride=1, cstride=1, alpha=1, color = "#7D44FF")
+# kxx, kyy = np.meshgrid(kx, ky, indexing = 'xy')
+# axes.plot_surface(kxx, kyy, Enks[:, :, 0], rstride=1, cstride=1, alpha=1, color = "#FF0000")
+# axes.plot_surface(kxx, kyy, Enks[:, :, 1], rstride=1, cstride=1, alpha=1, color = "#00E054")
+# axes.plot_surface(kxx, kyy, Enks[:, :, 2], rstride=1, cstride=1, alpha=1, color = "#7D44FF")
 
-axes.set_xlim3d(-np.pi, np.pi)
-axes.set_ylim3d(-np.pi, np.pi)
-# axes.set_zlim3d(bottom = 0)
+# axes.set_xlim3d(-np.pi, np.pi)
+# axes.set_ylim3d(-np.pi, np.pi)
+# # axes.set_zlim3d(bottom = 0)
 
-axes.set_xlabel(r"$k_{\rm x}$", labelpad = 20)
-axes.set_ylabel(r"$k_{\rm y}$", labelpad = 20)
-axes.set_zlabel(r"$E$", labelpad = 20)
+# axes.set_xlabel(r"$k_{\rm x}$", labelpad = 20)
+# axes.set_ylabel(r"$k_{\rm y}$", labelpad = 20)
+# axes.set_zlabel(r"$E$", labelpad = 20)
 
-## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+# ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
 plt.show()
 
