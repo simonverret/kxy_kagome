@@ -1,6 +1,3 @@
-## Salut Gael
-
-
 import numpy as np
 from scipy import optimize
 np.set_printoptions(6,suppress=True,sign="+",floatmode="fixed")
