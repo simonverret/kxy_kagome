@@ -82,19 +82,6 @@ def selfConsistCond(varSet):
     conditionlamda = 2*S-1
     conditionChiUp = resChiUp-chiUp
     conditionChiDn = resChiDn-chiDn
-
-
-    # print("hopping up   : "+str(tUp))
-    # print("hopping down : "+str(tDn))
-    # print("bands :\n",bandsUp[10,10])
-    # print("fnkup :\n",fnkUp[10,10])
-    # print("fnkdn :\n",fnkDn[10,10])
-
-
-    # print("lambda = "+"{:<8}".format(str(lamda))+" -->      S = "+str(S))
-    # print("chi_up = "+"{:<8}".format(str(chiUp))+" --> chi_up = "+str(resChiUp))
-    # print("chi_dn = "+"{:<8}".format(str(chiDn))+" --> chi_dn = "+str(resChiDn))
-    # print("condition  : ",np.array([conditionlamda,conditionChiUp,conditionChiDn],dtype=complex))
     
     print("call ",selfConsistCond.counter)
     print("vars in  :",np.array([lamda,chiUp,chiDn]))
@@ -105,28 +92,32 @@ def selfConsistCond(varSet):
 selfConsistCond.counter =0
 
 #### UNCOMMENT FOR SINGLE INIT RUN and exit
-# sollamda = initLamda
+# solLamda = initLamda
 # solChiUp = initChiUp
 # solChiDn = initChiDn
 # selfConsistCond([initLamda,initChiUp,initChiDn])
 # exit(1)
 
-
 sol_object = optimize.root(selfConsistCond, np.array([initLamda,initChiUp,initChiDn]), method = 'anderson')
 print("\nSolution reached in "+str(selfConsistCond.counter)+" call:")
 print(sol_object.x)
-sollamda = sol_object.x[0]
+solLamda = sol_object.x[0]
 solChiUp = sol_object.x[1]
 solChiDn = sol_object.x[2]
 
 
+
+
+#######################
+#### VARIOUS PLOTS ####
+#######################
+
 # tUp = hopping( 1,solChiUp,solChiDn)
 # tDn = hopping(-1,solChiDn,solChiUp)
-# bandsUp,eigVecsUp = eighOnMesh( 1,sollamda,tUp)
-# bandsDn,eigVecsDn = eighOnMesh(-1,sollamda,tDn)
+# bandsUp,eigVecsUp = eighOnMesh( 1,solLamda,tUp)
+# bandsDn,eigVecsDn = eighOnMesh(-1,solLamda,tDn)
 
-
-
+# #### BANDS FOR SPIN UP AND DOWN
 # X,Y = np.meshgrid(KY,KX)
 # fig = plt.figure()
 # ax = fig.gca(projection='3d')
@@ -135,24 +126,25 @@ solChiDn = sol_object.x[2]
 #     ax.plot_surface(X, Y, bandsDn[:,:,i])
 # plt.show()
 
-
-
-# res1d = 31
-# X=np.linspace(-minE+0.001,maxE, res1d)
+# #### PLOT FOR LAMBDA
+# res1d = 51
+# X=np.linspace(solLamda-2.5,solLamda+2.5, res1d)
 # Y=np.zeros(res1d)
 # for i,x in enumerate(X):
 #     Y[i] = selfConsistCond([x,1,1])[0]
 # fig = plt.figure()
+# plt.ylim(-3,3)
 # plt.plot(X,Y)
 # plt.show()
 
-# res = 21
-# X = np.linspace(0.001,1.1, res)
-# Y = np.linspace(0.001,1.1, res)
+# #### PLOT FOR RESIDUALS vs CHIup and CHIdn
+# res = 15
+# X = np.linspace(solChiUp-0.5,solChiUp+0.5, res)
+# Y = np.linspace(solChiDn-0.5,solChiDn+0.5, res)
 # Z=[np.zeros((res,res)),np.zeros((res,res)),np.zeros((res,res))]
 # for i,x in enumerate(X):
 #     for j,y in enumerate(Y):
-#         Z[0][i,j],Z[1][i,j],Z[2][i,j] = selfConsistCond([simple_lamdada_root,x,y])
+#         Z[0][i,j],Z[1][i,j],Z[2][i,j] = selfConsistCond([solLamda,x,y])
 # X,Y = np.meshgrid(X, Y)
 # fig = plt.figure()
 # ax = fig.gca(projection='3d')
@@ -162,13 +154,9 @@ solChiDn = sol_object.x[2]
 
 
 
-
-
 # go see : https://stackoverflow.com/questions/41443444/numpy-element-wise-dot-product
 # for element wise tensor protduct 
-
 # https://sites.google.com/a/ucsc.edu/krumholz/teaching-and-courses/ast119_w15/class-7
 # for multivariate optimize
-
 # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html#scipy.optimize.minimize
 # to know how to add bounds for some and None for others
