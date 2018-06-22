@@ -2,7 +2,7 @@
 
 ## Modules <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<#
 import numpy as np
-from numpy import cos, sin, pi, sqrt, exp, arctan2
+from numpy import cos, sin, pi, sqrt, exp
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from mpl_toolkits.mplot3d import axes3d
@@ -194,8 +194,8 @@ def fit_function(pars, kx, ky, B, J, D, T):
     ts_dn = compute_ts(chi_up, chi_dn, J, D, -1)
 
     # Redefine minimum for lambda
-    Enks_up, la_min_up = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)[0::3]
-    Enks_dn, la_min_dn = diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)[0::3]
+    la_min_up = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)[3]
+    la_min_dn = diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)[3]
     laa_min = np.min([la_min_up, la_min_dn])
 
     # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
@@ -210,11 +210,11 @@ def fit_function(pars, kx, ky, B, J, D, T):
     # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
     # Compute eigenvalues
-    Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = diag_func(kx, ky, la_new, s = 1, B = B, ts = ts_up)
-    Enks_dn, Enks_ndiag_dn, Vnks_dn, la_min_dn = diag_func(kx, ky, la_new, s = -1, B = B, ts = ts_dn)
+    Enks_up_new, Enks_ndiag_up_new = diag_func(kx, ky, la_new, s = 1, B = B, ts = ts_up)[0:2]
+    Enks_dn_new, Enks_ndiag_dn_new = diag_func(kx, ky, la_new, s = -1, B = B, ts = ts_dn)[0:2]
 
     # Compute residual_Chi
-    (chi_up_new, chi_dn_new) = compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T)
+    (chi_up_new, chi_dn_new) = compute_chi(Enks_up_new, Enks_dn_new, Enks_ndiag_up_new, Enks_ndiag_dn_new, ts_up, ts_dn, T)
     residual_chi_up = chi_up - chi_up_new
     residual_chi_dn = chi_dn - chi_dn_new
 
@@ -240,8 +240,8 @@ la_min = np.min([la_min_up, la_min_dn])
 
 parameters = Parameters()
 parameters.add("la", value = la_min*1.1, min = la_min, max = 100, vary = False)
-parameters.add("chi_up", value = chi_up_ini, min = -3, max = -0.1, vary = True)
-parameters.add("chi_dn", value = chi_dn_ini, min = -3, max = -0.1, vary = True)
+parameters.add("chi_up", value = chi_up_ini, min = -3, max = 0, vary = True)
+parameters.add("chi_dn", value = chi_dn_ini, min = -3, max = 0, vary = True)
 
 # Carry out the fit ##
 
@@ -261,21 +261,6 @@ ts_up = compute_ts(chi_up, chi_dn, J, D, 1)
 ts_dn = compute_ts(chi_up, chi_dn, J, D, -1)
 print("ts_up = " + str(ts_up))
 print("ts_dn = " + str(ts_dn))
-
-# # Compute eigenvalues
-# Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = diag_func(kx, ky, la_ini, s = 1, B = B, ts = ts_up_ini)
-# Enks_dn, Enks_ndiag_dn, Vnks_dn, la_min_dn = diag_func(kx, ky, la_ini, s = -1, B = B, ts = ts_dn_ini)
-
-# # Redefine minimum for lambda
-
-# laa_min = np.min([la_min_up, la_min_dn])
-# parameters_laa = Parameters()
-# parameters_laa.add("laa", value = laa_min*1.01, min = laa_min*1.01, max = 100, vary = True)
-# out_laa = minimize(residual_lambda, parameters_laa, args=(kx, ky, B, ts_up_ini, ts_dn_ini, T), method="least_squares")
-# la = out_laa.params["laa"].value
-# ts_up = ts_up_ini
-# ts_dn = ts_dn_ini
-# print(la)
 
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<#
 # Figures PRINT ///////////////////////////////////////////////////////////////#
@@ -423,106 +408,226 @@ mpl.rcParams['pdf.fonttype'] = 3  # Output Type 3 (Type3) or Type 42 (TrueType),
 
 
 ## diff_chi vs chi ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+la = 2.5
 
-span = 0.05
-# la = 3
-chi_up_array = np.arange(-1.2, 0, 0.05)
-chi_dn_array = np.arange(-1.2, 0, 0.05)
+# span = 0.01
+# # la = 3
+# chi_up_array = np.arange(-2, 2, 0.01)
+# chi_dn_array = np.arange(-2, 2, 0.01)
 
-ts_up_array = np.zeros(np.shape(chi_up_array))
-ts_dn_array = np.zeros(np.shape(chi_dn_array))
+# ts_up_array = np.zeros(np.shape(chi_up_array))
+# ts_dn_array = np.zeros(np.shape(chi_dn_array))
 
-diff_chi_up = np.zeros((len(chi_up_array), len(chi_dn_array)), dtype = float)
-diff_chi_dn = np.zeros((len(chi_dn_array), len(chi_dn_array)), dtype = float)
+# diff_chi_up = np.zeros((len(chi_up_array), len(chi_dn_array)), dtype = float)
+# diff_chi_dn = np.zeros((len(chi_dn_array), len(chi_dn_array)), dtype = float)
 
-chi_up_0_x = []
-chi_up_0_y = []
-chi_dn_0_x = []
-chi_dn_0_y = []
+# chi_up_0_x = []
+# chi_up_0_y = []
+# chi_dn_0_x = []
+# chi_dn_0_y = []
 
-for i, chi_up in enumerate(chi_up_array):
-    for j, chi_dn in enumerate(chi_dn_array):
+# for i, chi_up in enumerate(chi_up_array):
+#     for j, chi_dn in enumerate(chi_dn_array):
 
-        ts_up = compute_ts(chi_up, chi_dn, J, D, 1)
-        ts_dn = compute_ts(chi_up, chi_dn, J, D, -1)
+#         ts_up = compute_ts(chi_up, chi_dn, J, D, 1)
+#         ts_dn = compute_ts(chi_up, chi_dn, J, D, -1)
 
-        Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)
-        Enks_dn, Enks_ndiag_dn, Vnks_dn, la_min_dn = diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)
+#         Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)
+#         Enks_dn, Enks_ndiag_dn, Vnks_dn, la_min_dn = diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)
 
-        (chi_up_new, chi_dn_new) = compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T)
+#         (chi_up_new, chi_dn_new) = compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T)
 
-        diff_chi_up[i, j] = chi_up_new - chi_up
-        diff_chi_dn[i, j] = chi_dn_new - chi_dn
+#         diff_chi_up[i, j] = chi_up_new - chi_up
+#         diff_chi_dn[i, j] = chi_dn_new - chi_dn
 
-        if (diff_chi_up[i, j] < span) * (diff_chi_up[i, j] > -span):
-            chi_up_0_x.append(chi_up)
-            chi_up_0_y.append(chi_dn)
+#         if (diff_chi_up[i, j] < span) * (diff_chi_up[i, j] > -span):
+#             chi_up_0_x.append(chi_up)
+#             chi_up_0_y.append(chi_dn)
 
-        if (diff_chi_dn[i, j] < span) * (diff_chi_dn[i, j] > -span):
-            chi_dn_0_x.append(chi_up)
-            chi_dn_0_y.append(chi_dn)
-
-
-
+#         if (diff_chi_dn[i, j] < span) * (diff_chi_dn[i, j] > -span):
+#             chi_dn_0_x.append(chi_up)
+#             chi_dn_0_y.append(chi_dn)
 
 
-## chi for diff_chi = 0 :::::::::::::::::::::::::::::::::::::::::::::::::::::#
-
-fig , axes = plt.subplots(1,1, figsize=(9.2, 5.6)) # figsize is w x h in inch of figure
-fig.subplots_adjust(left = 0.17, right = 0.81, bottom = 0.18, top = 0.95) # adjust the box of axes regarding the figure size
-
-for tick in axes.xaxis.get_major_ticks():
-    tick.set_pad(7)
-for tick in axes.yaxis.get_major_ticks():
-    tick.set_pad(8)
-
-#///// Plot /////#
-
-line = axes.plot(chi_up_0_x, chi_up_0_y)
-plt.setp(line, ls = "", c = 'r', lw = 3, marker = "o", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
-line = axes.plot(chi_dn_0_x, chi_dn_0_y)
-plt.setp(line, ls = "", c = 'b', lw = 3, marker = "o", mfc = 'w', ms = 6.5, mec = '#00E054', mew = 2.5)
-
-# axes.set_xlim(0, 2*np.pi/3)
-axes.locator_params(axis = 'x', nbins = 6)
-axes.locator_params(axis = 'y', nbins = 6)
-axes.set_xlabel(r"$\chi_{\rm \uparrow}$", labelpad = 8)
-axes.set_ylabel(r"$\chi_{\rm \downarrow}$", labelpad = 8)
 
 
-## 3D diff_chi vs chi :::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
-fig = plt.figure(figsize=(9.2, 5.6))
-axes = fig.add_subplot(111, projection='3d')
+# ## chi for diff_chi = 0 :::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
-# ij_index_up = (diff_chi_up > 0.05)
-# ij_index_dn = (diff_chi_dn > 0.05)
+# fig , axes = plt.subplots(1,1, figsize=(9.2, 5.6)) # figsize is w x h in inch of figure
+# fig.subplots_adjust(left = 0.17, right = 0.81, bottom = 0.18, top = 0.95) # adjust the box of axes regarding the figure size
 
-# diff_chi_up[ij_index_up] = np.nan
-# diff_chi_dn[ij_index_dn] = np.nan
+# for tick in axes.xaxis.get_major_ticks():
+#     tick.set_pad(7)
+# for tick in axes.yaxis.get_major_ticks():
+#     tick.set_pad(8)
 
-# ij_index_up = (diff_chi_up < -0.05)
-# ij_index_dn = (diff_chi_dn < -0.05)
+# #///// Plot /////#
 
-# diff_chi_up[ij_index_up] = np.nan
-# diff_chi_dn[ij_index_dn] = np.nan
+# line = axes.plot(chi_up_0_x, chi_up_0_y)
+# plt.setp(line, ls = "", c = 'r', lw = 3, marker = "o", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
+# line = axes.plot(chi_dn_0_x, chi_dn_0_y)
+# plt.setp(line, ls = "", c = 'b', lw = 3, marker = "o", mfc = 'w', ms = 6.5, mec = '#00E054', mew = 2.5)
+
+# # axes.set_xlim(0, 2*np.pi/3)
+# axes.locator_params(axis = 'x', nbins = 6)
+# axes.locator_params(axis = 'y', nbins = 6)
+# axes.set_xlabel(r"$\chi_{\rm \uparrow}$", labelpad = 8)
+# axes.set_ylabel(r"$\chi_{\rm \downarrow}$", labelpad = 8)
 
 
-chii_up, chii_dn = np.meshgrid(chi_up_array, chi_dn_array, indexing = 'xy')
-axes.scatter(chii_up, chii_dn, diff_chi_up, color = "#FF5555")
-axes.scatter(chii_up, chii_dn, diff_chi_dn, color = "#511CFF")
-# axes.plot_surface(chii_up, chii_dn, np.zeros((len(chi_up_array), len(chi_dn_array)), dtype = float), rstride=1, cstride=1, alpha=1, color = "k")
+# ## 3D diff_chi vs chi :::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+
+# fig = plt.figure(figsize=(9.2, 5.6))
+# axes = fig.add_subplot(111, projection='3d')
+
+# # ij_index_up = (diff_chi_up > 0.05)
+# # ij_index_dn = (diff_chi_dn > 0.05)
+
+# # diff_chi_up[ij_index_up] = np.nan
+# # diff_chi_dn[ij_index_dn] = np.nan
+
+# # ij_index_up = (diff_chi_up < -0.05)
+# # ij_index_dn = (diff_chi_dn < -0.05)
+
+# # diff_chi_up[ij_index_up] = np.nan
+# # diff_chi_dn[ij_index_dn] = np.nan
 
 
-# axes.set_xlim3d(-np.pi, np.pi)
-# axes.set_ylim3d(-np.pi, np.pi)
-axes.set_zlim3d(-1, 1)
+# chii_up, chii_dn = np.meshgrid(chi_up_array, chi_dn_array, indexing = 'xy')
+# axes.scatter(chii_up, chii_dn, diff_chi_up, color = "#FF5555")
+# axes.scatter(chii_up, chii_dn, diff_chi_dn, color = "#511CFF")
+# # axes.plot_surface(chii_up, chii_dn, np.zeros((len(chi_up_array), len(chi_dn_array)), dtype = float), rstride=1, cstride=1, alpha=1, color = "k")
 
-axes.set_xlabel(r"$\chi_{\rm \uparrow}$", labelpad = 20)
-axes.set_ylabel(r"$\chi_{\rm \downarrow}$", labelpad = 20)
-axes.set_zlabel(r"$\Delta\chi$", labelpad = 20)
 
-## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+# # axes.set_xlim3d(-np.pi, np.pi)
+# # axes.set_ylim3d(-np.pi, np.pi)
+# axes.set_zlim3d(-1, 1)
+
+# axes.set_xlabel(r"$\chi_{\rm \uparrow}$", labelpad = 20)
+# axes.set_ylabel(r"$\chi_{\rm \downarrow}$", labelpad = 20)
+# axes.set_zlabel(r"$\Delta\chi$", labelpad = 20)
+
+# ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+
+
+
+
+
+# ## residual_chi vs chi ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+
+# ## chi_dn residual function
+# def residual_chi_dn(pars, chi_up, la, kx, ky, B, J, D, T):
+
+#     chi_dn = pars["chi_dn"].value
+
+#     # Compute ts_up & ts_dn
+#     ts_up = compute_ts(chi_up, chi_dn, J, D, 1)
+#     ts_dn = compute_ts(chi_up, chi_dn, J, D, -1)
+
+#     # Compute eigenvalues
+#     Enks_up, Enks_ndiag_up = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)[0:2]
+#     Enks_dn, Enks_ndiag_dn = diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)[0:2]
+
+#     # Compute residual_Chi
+#     (chi_up_new, chi_dn_new) = compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T)
+#     residual_chi_dn = chi_dn - chi_dn_new
+
+#     print("residual(chi_dn) = ("
+#        + r"{0:.4e}".format(residual_chi_dn) + ")")
+
+#     return residual_chi_dn
+
+# ## chi_dn residual function
+# def residual_chi_up(pars, chi_dn, la, kx, ky, B, J, D, T):
+
+#     chi_up = pars["chi_up"].value
+
+#     # Compute ts_up & ts_dn
+#     ts_up = compute_ts(chi_up, chi_dn, J, D, 1)
+#     ts_dn = compute_ts(chi_up, chi_dn, J, D, -1)
+
+#     # Compute eigenvalues
+#     Enks_up, Enks_ndiag_up = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)[0:2]
+#     Enks_dn, Enks_ndiag_dn = diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)[0:2]
+
+#     # Compute residual_Chi
+#     (chi_up_new, chi_dn_new) = compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T)
+#     residual_chi_up = chi_up - chi_up_new
+
+#     print("residual(chi_up) = ("
+#        + r"{0:.4e}".format(residual_chi_up) + ")")
+
+#     return residual_chi_up
+
+
+
+
+
+# chi_up_array = np.arange(-0.5, -0.1, 0.01)
+# chi_dn_array = np.arange(-0.5, -0.1, 0.01)
+
+# ts_up_array = np.zeros(np.shape(chi_up_array))
+# ts_dn_array = np.zeros(np.shape(chi_dn_array))
+
+# chi_up_0_x = []
+# chi_up_0_y = []
+# chi_dn_0_x = []
+# chi_dn_0_y = []
+
+# for i, chi_up in enumerate(chi_up_array):
+
+
+#     parameters = Parameters()
+#     parameters.add("chi_dn", value = -0.2, min = -0.7, max = 0, vary = True)
+#     # parameters.add("chi_dn", min = -0.5, max = -0.1, brute_step=0.001)
+#     out = minimize(residual_chi_dn, parameters, args=(chi_up, la, kx, ky, B, J, D, T), method="least_squares")
+
+#     chi_up_0_x.append(chi_up)
+#     chi_up_0_y.append(out.params["chi_dn"].value)
+
+# for i, chi_dn in enumerate(chi_dn_array):
+
+#         parameters = Parameters()
+#         parameters.add("chi_up", value = -0.2, min = -0.7, max = 0, vary = True)
+#         # parameters.add("chi_up", min = -0.5, max = -0.1, brute_step=0.001)
+#         out = minimize(residual_chi_up, parameters, args=(chi_dn, la, kx, ky, B, J, D, T), method="least_squares")
+
+#         chi_dn_0_x.append(out.params["chi_up"].value)
+#         chi_dn_0_y.append(chi_dn)
+
+
+
+
+# ## chi for diff_chi = 0 :::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+
+# fig , axes = plt.subplots(1,1, figsize=(9.2, 5.6)) # figsize is w x h in inch of figure
+# fig.subplots_adjust(left = 0.17, right = 0.81, bottom = 0.18, top = 0.95) # adjust the box of axes regarding the figure size
+
+# for tick in axes.xaxis.get_major_ticks():
+#     tick.set_pad(7)
+# for tick in axes.yaxis.get_major_ticks():
+#     tick.set_pad(8)
+
+# #///// Plot /////#
+
+# line = axes.plot(chi_up_0_x, chi_up_0_y)
+# plt.setp(line, ls = "", c = 'r', lw = 3, marker = "o", mfc = 'w', ms = 6.5, mec = 'r', mew = 2.5)
+# line = axes.plot(chi_dn_0_x, chi_dn_0_y)
+# plt.setp(line, ls = "", c = 'b', lw = 3, marker = "o", mfc = 'w', ms = 6.5, mec = 'b', mew = 2.5)
+
+# # axes.set_xlim(0, 2*np.pi/3)
+# axes.locator_params(axis = 'x', nbins = 6)
+# axes.locator_params(axis = 'y', nbins = 6)
+# axes.set_xlabel(r"$\chi_{\rm \uparrow}$", labelpad = 8)
+# axes.set_ylabel(r"$\chi_{\rm \downarrow}$", labelpad = 8)
+
+
+
+
+
+
+
 
 plt.show()
 
