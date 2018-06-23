@@ -29,8 +29,8 @@ J = kB * T
 D = 0.2 * J
 
 la_ini = 3.3
-chi_up_ini = -1
-chi_dn_ini = -1
+chi_up_ini = -0.75
+chi_dn_ini = -0.75
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
@@ -161,89 +161,33 @@ def compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T)
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
-## Difference between computed S and S = 1 / 2
-def residual_lambda(pars, kx, ky, B, ts_up, ts_dn, T):
 
-    laa = pars["laa"].value
+#::: Initialize ::::::#
 
-    Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = diag_func(kx, ky, laa, s = 1, B = B, ts = ts_up)
-    Enks_dn, Enks_ndiag_dn, Vnks_dn, la_min_dn = diag_func(kx, ky, laa, s = -1, B = B, ts = ts_dn)
+# Compute ts_up & ts_dn
+ts_up_ini = compute_ts(chi_up_ini, chi_dn_ini, J, D, 1)
+ts_dn_ini = compute_ts(chi_up_ini, chi_dn_ini, J, D, -1)
 
-    S = 1 / 2
-    residual_S = compute_S(Enks_up, Enks_dn, T) - S
+# Compute eigenvalues
+Enks_up_ini, Enks_ndiag_up_ini = diag_func(kx, ky, la_ini, s = 1, B = B, ts = ts_up_ini)[0:2]
+Enks_dn_ini, Enks_ndiag_dn_ini = diag_func(kx, ky, la_ini, s = -1, B = B, ts = ts_dn_ini)[0:2]
 
-    return residual_S
+# Compute residual_S
+S_ini = compute_S(Enks_up_ini, Enks_dn_ini, T)
 
-## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+#::::::::: New ::::::#
 
-## Fit function
-def fit_function(pars, kx, ky, B, J, D, T):
+# Compute residual_Chi
+(chi_up_new, chi_dn_new) = compute_chi(Enks_up_ini, Enks_dn_ini, Enks_ndiag_up_ini, Enks_ndiag_dn_ini, ts_up_ini, ts_dn_ini, T)
 
+print("IN (chi_up, chi_dn, lambda) = ("
+       + r"{0:.4e}".format(chi_up_ini) + ", "
+       + r"{0:.4e}".format(chi_dn_ini) + ", "
+       + r"{0:.4e}".format(la_ini) + ")")
 
-    la = pars["la"].value
-    chi_up = pars["chi_up"].value
-    chi_dn = pars["chi_dn"].value
-
-    print("OLD (lambda, chi_up, chi_dn) = (" +
-         r"{0:.4e}".format(la) + ", "
-       + r"{0:.4e}".format(chi_up) + ", "
-       + r"{0:.4e}".format(chi_dn) + ")")
-
-    # Compute ts_up & ts_dn
-    ts_up = compute_ts(chi_up, chi_dn, J, D, 1)
-    ts_dn = compute_ts(chi_up, chi_dn, J, D, -1)
-
-    # Compute eigenvalues
-    Enks_up_new, Enks_ndiag_up_new = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)[0:2]
-    Enks_dn_new, Enks_ndiag_dn_new = diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)[0:2]
-
-    # Compute residual_Chi
-    (chi_up_new, chi_dn_new) = compute_chi(Enks_up_new, Enks_dn_new, Enks_ndiag_up_new, Enks_ndiag_dn_new, ts_up, ts_dn, T)
-    residual_chi_up = chi_up - chi_up_new
-    residual_chi_dn = chi_dn - chi_dn_new
-
-    # Compute residual_S
-    residual_S = compute_S(Enks_up_new, Enks_dn_new, T) - 1 / 2
-
-    print("residual (S, chi_up, chi_dn) = ("
-       + r"{0:.4e}".format(residual_S) + ", "
-       + r"{0:.4e}".format(residual_chi_up) + ", "
-       + r"{0:.4e}".format(residual_chi_dn) + ")")
-
-
-    return (residual_S, residual_chi_up, residual_chi_dn)
-
-
-
-## Create the fit parameters ##
-Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = diag_func(kx, ky, la_ini, s = 1, B = B, ts = ts_up_ini)
-Enks_dn, Enks_ndiag_dn, Vnks_dn, la_min_dn = diag_func(kx, ky, la_ini, s = -1, B = B, ts = ts_dn_ini)
-
-la_min = np.min([la_min_up, la_min_dn])
-
-parameters = Parameters()
-parameters.add("la", value = la_ini, min = la_min, max = 100, vary = True)
-parameters.add("chi_up", value = chi_up_ini, min = -3, max = 0, vary = True)
-parameters.add("chi_dn", value = chi_dn_ini, min = -3, max = 0, vary = True)
-
-# Carry out the fit ##
-
-out = minimize(fit_function, parameters, args=(kx, ky, B, J, D, T), method="least_squares")
-
-## Print fit report ##
-
-print(fit_report(out.params))
-
-## Extract the final parameters from fit ##
-
-la = out.params["la"].value
-chi_up = out.params["chi_up"].value
-chi_dn = out.params["chi_dn"].value
-
-ts_up = compute_ts(chi_up, chi_dn, J, D, 1)
-ts_dn = compute_ts(chi_up, chi_dn, J, D, -1)
-print("ts_up = " + str(ts_up))
-print("ts_dn = " + str(ts_dn))
+print("OUT (chi_up, chi_dn) = ("
+       + r"{0:.4e}".format(chi_up_new) + ", "
+       + r"{0:.4e}".format(chi_dn_new) + ")")
 
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<#
 # Figures PRINT ///////////////////////////////////////////////////////////////#
