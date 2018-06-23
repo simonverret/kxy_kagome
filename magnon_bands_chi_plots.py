@@ -285,12 +285,14 @@ axes.set_ylabel(r"$\Delta\chi_{\rm \uparrow}$", labelpad = 8)
 
 
 
-## diff_chi vs chi ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+# ## diff_chi vs chi ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
-# span = 0.01
-# # la = 3
-# chi_up_array = np.arange(-2, 2, 0.01)
-# chi_dn_array = np.arange(-2, 2, 0.01)
+# la = 3.4
+
+# span = 0.003
+
+# chi_up_array = np.arange(-1, 0, 0.005)
+# chi_dn_array = np.arange(-1, 0, 0.005)
 
 # ts_up_array = np.zeros(np.shape(chi_up_array))
 # ts_dn_array = np.zeros(np.shape(chi_dn_array))
@@ -303,6 +305,9 @@ axes.set_ylabel(r"$\Delta\chi_{\rm \uparrow}$", labelpad = 8)
 # chi_dn_0_x = []
 # chi_dn_0_y = []
 
+# n_max_iter = np.size(chi_up_array) * np.size(chi_dn_array)
+
+# n = 0
 # for i, chi_up in enumerate(chi_up_array):
 #     for j, chi_dn in enumerate(chi_dn_array):
 
@@ -325,6 +330,9 @@ axes.set_ylabel(r"$\Delta\chi_{\rm \uparrow}$", labelpad = 8)
 #             chi_dn_0_x.append(chi_up)
 #             chi_dn_0_y.append(chi_dn)
 
+#         n += 1
+#         print("n_iter / n_max = " + str(n) + " / "+ str(n_max_iter))
+
 
 
 
@@ -339,12 +347,20 @@ axes.set_ylabel(r"$\Delta\chi_{\rm \uparrow}$", labelpad = 8)
 # for tick in axes.yaxis.get_major_ticks():
 #     tick.set_pad(8)
 
+# fig.text(0.83, 0.87, r"$\lambda$ = " + str(la), fontsize = 18)
+# fig.text(0.83, 0.82, "D = " + str(D), fontsize = 18)
+# fig.text(0.83, 0.77, "J = " + str(J), fontsize = 18)
+# fig.text(0.83, 0.72, "T = " + str(T), fontsize = 18)
+# fig.text(0.83, 0.67, "B = " + str(B), fontsize = 18)
+# fig.text(0.83, 0.62, "size kx = " + str(len(kx)), fontsize = 18)
+# fig.text(0.83, 0.57, "size ky = " + str(len(ky)), fontsize = 18)
+
 # #///// Plot /////#
 
 # line = axes.plot(chi_up_0_x, chi_up_0_y)
-# plt.setp(line, ls = "", c = 'r', lw = 3, marker = "o", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
+# plt.setp(line, ls = "", c = 'r', lw = 3, marker = "o", mfc = 'w', ms = 6.5, mec = 'r', mew = 2.5)
 # line = axes.plot(chi_dn_0_x, chi_dn_0_y)
-# plt.setp(line, ls = "", c = 'b', lw = 3, marker = "o", mfc = 'w', ms = 6.5, mec = '#00E054', mew = 2.5)
+# plt.setp(line, ls = "", c = 'b', lw = 3, marker = "o", mfc = 'w', ms = 6.5, mec = 'b', mew = 2.5)
 
 # # axes.set_xlim(0, 2*np.pi/3)
 # axes.locator_params(axis = 'x', nbins = 6)
@@ -352,23 +368,26 @@ axes.set_ylabel(r"$\Delta\chi_{\rm \uparrow}$", labelpad = 8)
 # axes.set_xlabel(r"$\chi_{\rm \uparrow}$", labelpad = 8)
 # axes.set_ylabel(r"$\chi_{\rm \downarrow}$", labelpad = 8)
 
+# fig.savefig("chi_up_dn_la_" + str(la) + ".png")
+
+
 
 # ## 3D diff_chi vs chi :::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
 # fig = plt.figure(figsize=(9.2, 5.6))
 # axes = fig.add_subplot(111, projection='3d')
 
-# # ij_index_up = (diff_chi_up > 0.05)
-# # ij_index_dn = (diff_chi_dn > 0.05)
+# ij_index_up = (diff_chi_up > span)
+# ij_index_dn = (diff_chi_dn > span)
 
-# # diff_chi_up[ij_index_up] = np.nan
-# # diff_chi_dn[ij_index_dn] = np.nan
+# diff_chi_up[ij_index_up] = np.nan
+# diff_chi_dn[ij_index_dn] = np.nan
 
-# # ij_index_up = (diff_chi_up < -0.05)
-# # ij_index_dn = (diff_chi_dn < -0.05)
+# ij_index_up = (diff_chi_up < -span)
+# ij_index_dn = (diff_chi_dn < -span)
 
-# # diff_chi_up[ij_index_up] = np.nan
-# # diff_chi_dn[ij_index_dn] = np.nan
+# diff_chi_up[ij_index_up] = np.nan
+# diff_chi_dn[ij_index_dn] = np.nan
 
 
 # chii_up, chii_dn = np.meshgrid(chi_up_array, chi_dn_array, indexing = 'xy')
