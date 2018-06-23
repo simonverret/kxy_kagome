@@ -1,6 +1,3 @@
-## Salut Gael
-
-
 import numpy as np
 from scipy import optimize
 np.set_printoptions(6,suppress=True,sign="+",floatmode="fixed")
@@ -20,9 +17,10 @@ D=0.2
 B=0.01
 T=1
 resX = 33
-initLamda =  3.9385
-initChiUp = -0.81067
-initChiDn = -0.79811
+
+initLamda =  3.4
+initChiUp = -0.6
+initChiDn = -0.6
 
 resY = resX # previously squarer: int( resX * 2/np.sqrt(3) )
 Nk = resX*resY 
@@ -98,7 +96,7 @@ selfConsistCond.counter =0
 # selfConsistCond([initLamda,initChiUp,initChiDn])
 # exit(1)
 
-sol_object = optimize.root(selfConsistCond, np.array([initLamda,initChiUp,initChiDn]), method = 'anderson')
+sol_object = optimize.root(selfConsistCond, np.array([initLamda,initChiUp,initChiDn]))
 print("\nSolution reached in "+str(selfConsistCond.counter)+" call:")
 print(sol_object.x)
 solLamda = sol_object.x[0]
