@@ -9,7 +9,7 @@ from mpl_toolkits.mplot3d import axes3d
 from functools import partial
 from scipy import integrate, optimize
 from numpy.linalg import multi_dot
-from lmfit import minimize, Parameters, fit_report
+from lmfit import minimize, fit_report, Minimizer, Parameters
 ##>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
 
 ## Universal Constant :::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
@@ -110,8 +110,7 @@ def compute_ts(chi_up, chi_dn, J, D, s):
 
 ts_up_ini = compute_ts(chi_up_ini, chi_dn_ini, J, D, 1)
 ts_dn_ini = compute_ts(chi_up_ini, chi_dn_ini, J, D, -1)
-# print("ts_up_ini = " + str(ts_up_ini))
-# print("ts_dn_ini = " + str(ts_dn_ini))
+
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
@@ -138,7 +137,7 @@ def compute_S(Enks_up, Enks_dn, T):
     sum_s_up = np.sum(n_B(Enks_up[:,:,0] / (kB * T))) + np.sum(n_B(Enks_up[:,:,1] / (kB * T))) + np.sum(n_B(Enks_up[:,:,2] / (kB * T)))
     sum_s_dn = np.sum(n_B(Enks_dn[:,:,0] / (kB * T))) + np.sum(n_B(Enks_dn[:,:,1] / (kB * T))) + np.sum(n_B(Enks_dn[:,:,2] / (kB * T)))
 
-    S = (sum_s_up + sum_s_dn) / Nt
+    S = (sum_s_up + sum_s_dn) / Nt / 2
 
     return S
 
@@ -181,40 +180,6 @@ def residual_chi(chi, la, kx, ky, B, T):
 
     return (residual_chi_up, residual_chi_dn)
 
-def residual_chi_up(chi_up, chi_dn, la, kx, ky, B, T):
-
-    # Compute ts_up & ts_dn
-    ts_up = compute_ts(chi_up, chi_dn, J, D, 1)
-    ts_dn = compute_ts(chi_up, chi_dn, J, D, -1)
-
-    # Compute eigenvalues
-    Enks_up, Enks_ndiag_up = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)[0:2]
-    Enks_dn, Enks_ndiag_dn = diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)[0:2]
-
-    # Compute residual_Chi
-    (chi_up_new, chi_dn_new) = compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T)
-    residual_chi_up = chi_up - chi_up_new
-    # residual_chi_dn = chi_dn - chi_dn_new
-
-    return (residual_chi_up)
-
-def residual_chi_dn(chi_dn, chi_up, la, kx, ky, B, T):
-
-    # Compute ts_up & ts_dn
-    ts_up = compute_ts(chi_up, chi_dn, J, D, 1)
-    ts_dn = compute_ts(chi_up, chi_dn, J, D, -1)
-
-    # Compute eigenvalues
-    Enks_up, Enks_ndiag_up = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)[0:2]
-    Enks_dn, Enks_ndiag_dn = diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)[0:2]
-
-    # Compute residual_Chi
-    (chi_up_new, chi_dn_new) = compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T)
-    # residual_chi_up = chi_up - chi_up_new
-    residual_chi_dn = chi_dn - chi_dn_new
-
-    return (residual_chi_dn)
-
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<#
 # Figures PRINT ///////////////////////////////////////////////////////////////#
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
@@ -237,9 +202,46 @@ mpl.rcParams['pdf.fonttype'] = 3  # Output Type 3 (Type3) or Type 42 (TrueType),
                                     # editing the text in illustrator
 
 
-la = 2.5
+##>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
+## Compute S for different values of lambda with optimized chi_up and chi_dn ###
+##>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
 
-## diff_chi_up vs chi_up @ chi_dn fixed :::::::::::::::::::::::::::::::::::::#
+
+la_array = np.arange(2.5, 4, 0.2)
+S_array = np.zeros(len(la_array))
+
+for i, laa in enumerate(la_array):
+
+    p_residual_chi = partial(residual_chi, la = laa, kx = kx, ky = ky, B = B, T = T)
+
+    # In order to avoid the trivial value for (chi_up, chi_dn) = (0,0), we look for
+    # chi roots different from the trivial ones by trying different chi_ini values
+    # starting from chi_ini ~ 0 to higher values, as the non trivial roots are the second
+    # roots to find before chi_function becomes discontinous:
+
+    chi_steps = np.linspace(0.01, 2, 10)
+    for chi_ini in chi_steps:
+
+        sol_object = optimize.root(p_residual_chi, np.array([-chi_ini, -chi_ini]))
+        chi_roots = sol_object.x
+
+        if np.any(np.abs(chi_roots) < 1e-2) :
+            continue
+        else:
+            break
+
+    print("for lambda = " + "{0:.2e}".format(laa) + " roots(chi_up, chi_dn ) = " + str(chi_roots))
+
+    ts_up = compute_ts(chi_roots[0], chi_roots[1], J, D, 1)
+    ts_dn = compute_ts(chi_roots[0], chi_roots[1], J, D, -1)
+
+    Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = diag_func(kx, ky, laa, s = 1, B = B, ts = ts_up)
+    Enks_dn, Enks_ndiag_dn, Vnks_dn, la_min_dn = diag_func(kx, ky, laa, s = -1, B = B, ts = ts_dn)
+
+    S_array[i] = compute_S(Enks_up, Enks_dn, T)
+
+
+#///// Plot /////#
 
 fig , axes = plt.subplots(1,1, figsize=(9.2, 5.6)) # figsize is w x h in inch of figure
 fig.subplots_adjust(left = 0.17, right = 0.81, bottom = 0.18, top = 0.95) # adjust the box of axes regarding the figure size
@@ -249,88 +251,129 @@ for tick in axes.xaxis.get_major_ticks():
 for tick in axes.yaxis.get_major_ticks():
     tick.set_pad(8)
 
+axes.axhline(y = 0.5, ls = "--", c = "k", linewidth = 0.6)
+
+line = axes.plot(la_array, S_array)
+plt.setp(line, ls = "--", c = '#F60000', lw = 3, marker = "o", mfc = 'w', ms = 6.5, mec = '#F60000', mew = 2.5)
+
+axes.locator_params(axis = 'x', nbins = 6)
+axes.locator_params(axis = 'y', nbins = 6)
+axes.set_xlabel(r"$\lambda$", labelpad = 8)
+axes.set_ylabel(r"$S$", labelpad = 8)
 
 
-#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
-
-chi_dn_array = np.arange(-0.5, 0, 0.1)
-
-chi_up_array = np.arange(-0.5, 0, 0.01)
+##>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
+## Compute diff_chi_up & dn = 0 in function of chi_up and chi_dn ::::::::::::###
+##>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
 
 
-diff_chi_up_array = np.zeros((len(chi_up_array)), dtype = float)
-chi_up_root_list = []
+la = 3
 
+span = 0.003
 
-cmap = mpl.cm.get_cmap("jet", len(chi_dn_array))
-colors = cmap(np.arange(len(chi_dn_array)))
-fig.text(0.83,0.92, r"$\lambda$ = " + str(la), fontsize = 16)
-fig.text(0.83,0.87, r"$\chi_{\rm \downarrow}$ = ", fontsize = 16)
-axes.axhline(y=0, ls ="--", c ="k", linewidth=0.6)
+chi_up_array = np.arange(-1, 0, 0.01)
+chi_dn_array = np.arange(-1, 0, 0.01)
 
+ts_up_array = np.zeros(np.shape(chi_up_array))
+ts_dn_array = np.zeros(np.shape(chi_dn_array))
 
-n_max = (len(chi_up_array)) * (len(chi_dn_array))
-l = 0
+diff_chi_up = np.zeros((len(chi_up_array), len(chi_dn_array)), dtype = float)
+diff_chi_dn = np.zeros((len(chi_dn_array), len(chi_dn_array)), dtype = float)
 
+chi_up_0_x = []
+chi_up_0_y = []
+chi_dn_0_x = []
+chi_dn_0_y = []
 
-for k, chi_dn in enumerate(chi_dn_array):
-    for i, chi_up in enumerate(chi_up_array):
+n_max_iter = np.size(chi_up_array) * np.size(chi_dn_array)
+
+n = 0
+for i, chi_up in enumerate(chi_up_array):
+    for j, chi_dn in enumerate(chi_dn_array):
 
         ts_up = compute_ts(chi_up, chi_dn, J, D, 1)
         ts_dn = compute_ts(chi_up, chi_dn, J, D, -1)
 
-        Enks_up, Enks_ndiag_up = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)[0:2]
-        Enks_dn, Enks_ndiag_dn = diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)[0:2]
+        Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)
+        Enks_dn, Enks_ndiag_dn, Vnks_dn, la_min_dn = diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)
 
         (chi_up_new, chi_dn_new) = compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T)
 
-        diff_chi_up_array[i] = chi_up_new - chi_up
+        diff_chi_up[i, j] = chi_up_new - chi_up
+        diff_chi_dn[i, j] = chi_dn_new - chi_dn
 
-        l += 1
-        print("n_iter / n_max = " + str(l) + " / " + str(n_max))
+        if (diff_chi_up[i, j] < span) * (diff_chi_up[i, j] > -span):
+            chi_up_0_x.append(chi_up)
+            chi_up_0_y.append(chi_dn)
 
-    p_residual_chi_up = partial(residual_chi_up, chi_dn = chi_dn, la = la, kx = kx, ky = ky, B = B, T = T)
-    chi_up_max = optimize.fmin(p_residual_chi_up, -0.01, disp = False)
-    sol_object = optimize.root(p_residual_chi_up, chi_up_max)
-    chi_up_root_list.append(float(sol_object.x))
+        if (diff_chi_dn[i, j] < span) * (diff_chi_dn[i, j] > -span):
+            chi_dn_0_x.append(chi_up)
+            chi_dn_0_y.append(chi_dn)
+
+        n += 1
+        print("n_iter / n_max = " + str(n) + " / "+ str(n_max_iter))
 
 
-    #///// Plot /////#
-    line = axes.plot(chi_up_array, diff_chi_up_array)
-    plt.setp(line, ls = "-", c = colors[k], lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = colors[k], mew = 2.5)
-    fig.text(0.9,0.87-k*0.04, r"{0:g}".format(chi_dn), color =colors[k], fontsize = 16)
-    line = axes.plot(chi_up_root_list[k], 0)
-    plt.setp(line, ls = "", c = 'k', lw = 3, marker = "o", mfc = colors[k], ms = 6.5, mec = 'k', mew = 2.5)
+## Compute the crossing of diff_chi_up & diff_chi_dn
 
-axes.set_ylim(-0.4,0.4) # leave the ymax auto, but fix ymin
+p_residual_chi = partial(residual_chi, la = la, kx = kx, ky = ky, B = B, T = T)
+
+# In order to avoid the trivial value for (chi_up, chi_dn) = (0,0), we look for
+# chi roots different from the trivial ones by trying different chi_ini values
+# starting from chi_ini ~ 0 to higher values, as the non trivial roots are the second
+# roots to find before chi_function becomes discontinous:
+
+chi_steps = np.linspace(0.01, 2, 10)
+for chi_ini in chi_steps:
+
+    sol_object = optimize.root(p_residual_chi, np.array([-chi_ini, -chi_ini]))
+    chi_roots = sol_object.x
+
+    if np.any(np.abs(chi_roots) < 1e-2) :
+        continue
+    else:
+        break
+
+chi_up_roots = chi_roots[0]
+chi_dn_roots = chi_roots[1]
+
+
+
+#///// Plot /////#
+
+fig , axes = plt.subplots(1,1, figsize=(9.2, 5.6)) # figsize is w x h in inch of figure
+fig.subplots_adjust(left = 0.17, right = 0.81, bottom = 0.18, top = 0.95) # adjust the box of axes regarding the figure size
+
+for tick in axes.xaxis.get_major_ticks():
+    tick.set_pad(7)
+for tick in axes.yaxis.get_major_ticks():
+    tick.set_pad(8)
+
+fig.text(0.83, 0.87, r"$\lambda$ = " + str(la), fontsize = 18)
+fig.text(0.83, 0.82, "D = " + str(D), fontsize = 18)
+fig.text(0.83, 0.77, "J = " + str(J), fontsize = 18)
+fig.text(0.83, 0.72, "T = " + str(T), fontsize = 18)
+fig.text(0.83, 0.67, "B = " + str(B), fontsize = 18)
+fig.text(0.83, 0.62, "size kx = " + str(len(kx)), fontsize = 18)
+fig.text(0.83, 0.57, "size ky = " + str(len(ky)), fontsize = 18)
+
+#///// Plot /////#
+
+line = axes.plot(chi_up_0_x, chi_up_0_y)
+plt.setp(line, ls = "", c = 'r', lw = 3, marker = "o", mfc = 'w', ms = 6.5, mec = 'r', mew = 2.5)
+line = axes.plot(chi_dn_0_x, chi_dn_0_y)
+plt.setp(line, ls = "", c = 'b', lw = 3, marker = "o", mfc = 'w', ms = 6.5, mec = 'b', mew = 2.5)
+
+line = axes.plot(chi_up_roots, chi_dn_roots)
+plt.setp(line, ls = "", c = 'k', lw = 3, marker = "o", mfc = 'k', ms = 6.5, mec = 'k', mew = 2.5)
+
+
 axes.locator_params(axis = 'x', nbins = 6)
 axes.locator_params(axis = 'y', nbins = 6)
 axes.set_xlabel(r"$\chi_{\rm \uparrow}$", labelpad = 8)
-axes.set_ylabel(r"$\Delta\chi_{\rm \uparrow}$", labelpad = 8)
+axes.set_ylabel(r"$\chi_{\rm \downarrow}$", labelpad = 8)
 
-
-## Find roots for 2D function of chi using maximum of chi_up & chi_dn as root_guess
-
-p_residual_chi_up = partial(residual_chi_up, chi_dn = -0.4, la = la, kx = kx, ky = ky, B = B, T = T)
-chi_up_max = optimize.fmin(p_residual_chi_up, -0.01, disp = False)
-print("max chi_up" + str(chi_up_max))
-
-p_residual_chi_dn = partial(residual_chi_dn, chi_up = -0.4, la = la, kx = kx, ky = ky, B = B, T = T)
-chi_dn_max = optimize.fmin(p_residual_chi_dn, -0.01, disp = False)
-print("max chi_dn" + str(chi_dn_max))
-
-p_residual_chi = partial(residual_chi, la = la, kx = kx, ky = ky, B = B, T = T)
-sol_object = optimize.root(p_residual_chi, np.array([chi_up_max, chi_dn_max]))
-chi_roots = sol_object.x
-print("roots " + str(chi_roots))
-
-
-
-
-
-
-
-
+# fig.savefig("chi_up_dn_la_" + str(la) + ".png")
 
 
 plt.show()

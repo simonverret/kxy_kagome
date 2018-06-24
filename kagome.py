@@ -72,14 +72,14 @@ def selfConsistCond(varSet):
     bandsDn = eighOnMesh(-1,lamda,tDn)[0]
 
     # Doki et al., Universal..., 2018, sup. mat. Eq.(S6a)
-    S = dummyIntegral( bose(bandsUp) + bose(bandsDn) )
+    S = dummyIntegral( bose(bandsUp) + bose(bandsDn) ) / 2
     # Doki et al., Universal..., 2018, sup. mat. Eq.(S6b)
     fnkUp = (bandsUp-(lamda-B)) # =the eigenvalues of the hopping matrix
     fnkDn = (bandsDn-(lamda+B))
-    resChiUp = 2*dummyIntegral( fnkUp * bose(bandsUp) )/(np.abs(tUp))
-    resChiDn = 2*dummyIntegral( fnkDn * bose(bandsDn) )/(np.abs(tDn))
+    resChiUp = dummyIntegral( fnkUp * bose(bandsUp) )/(np.abs(tUp))
+    resChiDn = dummyIntegral( fnkDn * bose(bandsDn) )/(np.abs(tDn))
 
-    conditionlamda = 2*S-1
+    conditionlamda = S-1/2
     conditionChiUp = resChiUp-chiUp
     conditionChiDn = resChiDn-chiDn
 
