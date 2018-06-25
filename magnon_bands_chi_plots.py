@@ -7,9 +7,8 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from mpl_toolkits.mplot3d import axes3d
 from functools import partial
-from scipy import integrate, optimize
+from scipy import optimize
 from numpy.linalg import multi_dot
-from lmfit import minimize, fit_report, Minimizer, Parameters
 ##>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
 
 ## Universal Constant :::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
@@ -25,7 +24,7 @@ B = 0.01 # magnetic field in unit of energy g * muB * B
 T = 1
 kB = 1
 
-J = kB * T
+J = 1
 D = 0.2 * J
 
 la_ini = 0
@@ -373,7 +372,7 @@ axes.locator_params(axis = 'y', nbins = 6)
 axes.set_xlabel(r"$\chi_{\rm \uparrow}$", labelpad = 8)
 axes.set_ylabel(r"$\chi_{\rm \downarrow}$", labelpad = 8)
 
-# fig.savefig("chi_up_dn_la_" + str(la) + ".png")
+fig.savefig("chi_up_dn_la=" + str(la) + "_J="+ str(J) + "_T="+ str(T) + "_B="+ str(B) + "_kx="+ str(len(kx)) +".png")
 
 
 plt.show()

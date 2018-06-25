@@ -9,7 +9,6 @@ from mpl_toolkits.mplot3d import axes3d
 from functools import partial
 from scipy import integrate, optimize
 from numpy.linalg import multi_dot
-from lmfit import minimize, Parameters, fit_report
 ##>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
 
 ## Universal Constant :::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
@@ -17,20 +16,20 @@ from lmfit import minimize, Parameters, fit_report
 # hbar = 1.05457173e-34 # J.s
 # e = 1.60217657e-19 # coulombs
 # kB = 1.380648e-23 # J / K
+kB = 1
 
 ## Variables ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
 B = 0.01 # magnetic field in unit of energy g * muB * B
 
 T = 1
-kB = 1
 
-J = kB * T
-D = 0.2 * J
+J = 1
+D = 0.125 * J
 
-la_ini = 3.386836
-chi_up_ini = -0.599199
-chi_dn_ini = -0.583489
+la_ini = 3.0414633
+chi_up_ini = -0.66968621
+chi_dn_ini = -0.64470793
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
@@ -138,7 +137,7 @@ def compute_S(Enks_up, Enks_dn, T):
     sum_s_up = np.sum(n_B(Enks_up[:,:,0] / (kB * T))) + np.sum(n_B(Enks_up[:,:,1] / (kB * T))) + np.sum(n_B(Enks_up[:,:,2] / (kB * T)))
     sum_s_dn = np.sum(n_B(Enks_dn[:,:,0] / (kB * T))) + np.sum(n_B(Enks_dn[:,:,1] / (kB * T))) + np.sum(n_B(Enks_dn[:,:,2] / (kB * T)))
 
-    S = (sum_s_up + sum_s_dn) / Nt
+    S = (sum_s_up + sum_s_dn) / Nt / 2
 
     return S
 
