@@ -22,14 +22,14 @@ kB = 1
 
 B = 0.01 # magnetic field in unit of energy g * muB * B
 
-T = 1
+T = 0.1
 
 J = 1
-D = 0.125 * J
+D = 0.2 * J
 
-la_ini = 3.0414633
-chi_up_ini = -0.66968621
-chi_dn_ini = -0.64470793
+la_ini = +2.215964
+chi_up_ini = -0.864148
+chi_dn_ini = -0.611929
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
@@ -105,12 +105,6 @@ def compute_ts(chi_up, chi_dn, J, D, s):
         return J * ( chi_up + chi_dn ) - 1j * s * D * chi_dn
     else:
         return J * ( chi_up + chi_dn ) - 1j * s * D * chi_up
-
-
-ts_up_ini = compute_ts(chi_up_ini, chi_dn_ini, J, D, 1)
-ts_dn_ini = compute_ts(chi_up_ini, chi_dn_ini, J, D, -1)
-print("ts_up_ini = " + str(ts_up_ini))
-print("ts_dn_ini = " + str(ts_dn_ini))
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 

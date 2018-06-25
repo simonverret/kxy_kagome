@@ -9,6 +9,7 @@ from mpl_toolkits.mplot3d import axes3d
 from functools import partial
 from scipy import optimize
 from numpy.linalg import multi_dot
+np.set_printoptions(6,suppress=True,sign="+",floatmode="fixed")
 ##>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
 
 ## Universal Constant :::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
@@ -22,10 +23,10 @@ kB = 1
 
 B = 0.01 # magnetic field in unit of energy g * muB * B
 
-T = 1
+T = 0.1
 
 J = 1
-D = 0.5 * J
+D = 0.2 * J
 
 chi_up_ini = -1
 chi_dn_ini = -1
@@ -153,19 +154,6 @@ def compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T)
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
-## Difference between computed S and S = 1 / 2
-def residual_lambda(pars, kx, ky, B, ts_up, ts_dn, T):
-
-    laa = pars["laa"].value
-
-    Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = diag_func(kx, ky, laa, s = 1, B = B, ts = ts_up)
-    Enks_dn, Enks_ndiag_dn, Vnks_dn, la_min_dn = diag_func(kx, ky, laa, s = -1, B = B, ts = ts_dn)
-
-    S = 1 / 2
-    residual_S = compute_S(Enks_up, Enks_dn, T) - S
-
-    return residual_S
-
 def residual_chi(chi, la, kx, ky, B, T):
 
     chi_up = chi[0]
@@ -196,10 +184,7 @@ def residual_all(pars, kx, ky, B, J, D, T):
     chi_up = pars[1]
     chi_dn = pars[2]
 
-    print("(lambda, chi_up, chi_dn) = (" +
-         r"{0:.4e}".format(la) + ", "
-       + r"{0:.4e}".format(chi_up) + ", "
-       + r"{0:.4e}".format(chi_dn) + ")")
+    print("[lambda, chi_up, chi_dn] =     ", np.array([la, chi_up, chi_dn]))
 
     # Compute ts_up & ts_dn
     ts_up = compute_ts(chi_up, chi_dn, J, D, 1)
@@ -211,16 +196,13 @@ def residual_all(pars, kx, ky, B, J, D, T):
 
     # Compute residual_Chi
     (chi_up_new, chi_dn_new) = compute_chi(Enks_up_new, Enks_dn_new, Enks_ndiag_up_new, Enks_ndiag_dn_new, ts_up, ts_dn, T)
-    residual_chi_up = chi_up - chi_up_new
-    residual_chi_dn = chi_dn - chi_dn_new
+    residual_chi_up = (chi_up - chi_up_new)
+    residual_chi_dn = (chi_dn - chi_dn_new)
 
     # Compute residual_S
-    residual_S = compute_S(Enks_up_new, Enks_dn_new, T) - 1 / 2
+    residual_S = compute_S(Enks_up_new, Enks_dn_new, T) - 0.5
 
-    print("residual (S, chi_up, chi_dn) = ("
-       + r"{0:.4e}".format(residual_S) + ", "
-       + r"{0:.4e}".format(residual_chi_up) + ", "
-       + r"{0:.4e}".format(residual_chi_dn) + ")")
+    print("residual [S, chi_up, chi_dn] = ", np.array([residual_S, residual_chi_up, residual_chi_dn]))
 
 
     return (residual_S, residual_chi_up, residual_chi_dn)
@@ -244,13 +226,13 @@ p_residual_all = partial(residual_all, kx = kx, ky = ky, B = B, D = D, J = J, T 
 # starting from chi_ini ~ 0 to higher values, as the non trivial roots are the second
 # roots to find before chi_function becomes discontinous:
 
-chi_steps = np.arange(0.01, 2, 0.1)
+chi_steps = np.arange(0.01, 5, 0.1)
 for chi_ini in chi_steps:
 
-        sol_object = optimize.root(p_residual_all, np.array([la_min, -chi_ini, -chi_ini]))
-        roots = sol_object.x
+        out = optimize.root(p_residual_all, np.array([la_min, -chi_ini, -chi_ini]))
+        roots = out.x
 
-        if np.any(np.abs(roots[1:]) < 1e-4) : # (chi_up, chi_dn) < 1e-3
+        if np.all(np.abs(roots[1:]) < 1e-4) or (out.success is False) : # (chi_up, chi_dn) < 1e-4
             continue
         else:
             break
@@ -300,7 +282,7 @@ axes.axhline(y = 0.5, ls = "--", c = "k", linewidth = 0.6)
 
 #///// Plot /////#
 
-la_array = np.arange(la*0.9, la*1.1, 0.01)
+la_array = np.linspace(la*0.9, la*1.1, 10)
 S_array = np.zeros(len(la_array))
 
 for i, laa in enumerate(la_array):
@@ -384,32 +366,32 @@ axes.set_ylabel(r"$E$", labelpad = 8)
 
 
 
-## Energy bands :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+# ## Energy bands :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
-fig = plt.figure(figsize=(9.2, 5.6))
-axes = fig.add_subplot(111, projection='3d')
+# fig = plt.figure(figsize=(9.2, 5.6))
+# axes = fig.add_subplot(111, projection='3d')
 
-Enks_up = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)[0]
-Enks_dn = diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)[0]
-kxx, kyy = np.meshgrid(kx, ky, indexing = 'ij')
+# Enks_up = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)[0]
+# Enks_dn = diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)[0]
+# kxx, kyy = np.meshgrid(kx, ky, indexing = 'ij')
 
-axes.plot_surface(kxx / pi, kyy / pi, Enks_up[:, :, 0], rstride=1, cstride=1, alpha=1, color = "#FF0000")
-axes.plot_surface(kxx / pi, kyy / pi, Enks_up[:, :, 1], rstride=1, cstride=1, alpha=1, color = "#00E054")
-axes.plot_surface(kxx / pi, kyy / pi, Enks_up[:, :, 2], rstride=1, cstride=1, alpha=1, color = "#7D44FF")
+# axes.plot_surface(kxx / pi, kyy / pi, Enks_up[:, :, 0], rstride=1, cstride=1, alpha=1, color = "#FF0000")
+# axes.plot_surface(kxx / pi, kyy / pi, Enks_up[:, :, 1], rstride=1, cstride=1, alpha=1, color = "#00E054")
+# axes.plot_surface(kxx / pi, kyy / pi, Enks_up[:, :, 2], rstride=1, cstride=1, alpha=1, color = "#7D44FF")
 
-axes.plot_surface(kxx / pi, kyy / pi, Enks_dn[:, :, 0], rstride=1, cstride=1, alpha=1, color = "#FF0000")
-axes.plot_surface(kxx / pi, kyy / pi, Enks_dn[:, :, 1], rstride=1, cstride=1, alpha=1, color = "#00E054")
-axes.plot_surface(kxx / pi, kyy / pi, Enks_dn[:, :, 2], rstride=1, cstride=1, alpha=1, color = "#7D44FF")
+# axes.plot_surface(kxx / pi, kyy / pi, Enks_dn[:, :, 0], rstride=1, cstride=1, alpha=1, color = "#FF0000")
+# axes.plot_surface(kxx / pi, kyy / pi, Enks_dn[:, :, 1], rstride=1, cstride=1, alpha=1, color = "#00E054")
+# axes.plot_surface(kxx / pi, kyy / pi, Enks_dn[:, :, 2], rstride=1, cstride=1, alpha=1, color = "#7D44FF")
 
-axes.set_xlim3d(-2/3, 2/3)
-axes.set_ylim3d(-2/3, 2/3)
-# axes.set_zlim3d(bottom = 0)
+# axes.set_xlim3d(-2/3, 2/3)
+# axes.set_ylim3d(-2/3, 2/3)
+# # axes.set_zlim3d(bottom = 0)
 
-axes.set_xlabel(r"$k_{\rm x} / \pi$", labelpad = 20)
-axes.set_ylabel(r"$k_{\rm y} / \pi$", labelpad = 20)
-axes.set_zlabel(r"$E$", labelpad = 20)
+# axes.set_xlabel(r"$k_{\rm x} / \pi$", labelpad = 20)
+# axes.set_ylabel(r"$k_{\rm y} / \pi$", labelpad = 20)
+# axes.set_zlabel(r"$E$", labelpad = 20)
 
-## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+# ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
 
 
