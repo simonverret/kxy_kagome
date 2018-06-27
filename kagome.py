@@ -1,6 +1,3 @@
-## Salut Gael
-
-
 import numpy as np
 from scipy import optimize
 np.set_printoptions(6,suppress=True,sign="+",floatmode="fixed")
@@ -17,12 +14,13 @@ eta3 =  np.array([-1,np.sqrt(3)])/2
 
 J=1
 D=0.2
-B=0.01
-T=1
+B=0.1
+T=0.2
 resX = 33
-initLamda =  3.9385
-initChiUp = -0.81067
-initChiDn = -0.79811
+
+initLamda =  4.014814
+initChiUp = -1.804222
+initChiDn = -0.153052
 
 resY = resX # previously squarer: int( resX * 2/np.sqrt(3) )
 Nk = resX*resY
@@ -72,14 +70,14 @@ def selfConsistCond(varSet):
     bandsDn = eighOnMesh(-1,lamda,tDn)[0]
 
     # Doki et al., Universal..., 2018, sup. mat. Eq.(S6a)
-    S = dummyIntegral( bose(bandsUp) + bose(bandsDn) ) / 2
+    S = dummyIntegral( bose(bandsUp) + bose(bandsDn) )
     # Doki et al., Universal..., 2018, sup. mat. Eq.(S6b)
     fnkUp = (bandsUp-(lamda-B)) # =the eigenvalues of the hopping matrix
     fnkDn = (bandsDn-(lamda+B))
-    resChiUp = dummyIntegral( fnkUp * bose(bandsUp) )/(np.abs(tUp))
-    resChiDn = dummyIntegral( fnkDn * bose(bandsDn) )/(np.abs(tDn))
+    resChiUp = 2*dummyIntegral( fnkUp * bose(bandsUp) )/(np.abs(tUp))
+    resChiDn = 2*dummyIntegral( fnkDn * bose(bandsDn) )/(np.abs(tDn))
 
-    conditionlamda = S-1/2
+    conditionlamda = 2*S-1
     conditionChiUp = resChiUp-chiUp
     conditionChiDn = resChiDn-chiDn
 
@@ -98,7 +96,7 @@ selfConsistCond.counter =0
 # selfConsistCond([initLamda,initChiUp,initChiDn])
 # exit(1)
 
-sol_object = optimize.root(selfConsistCond, np.array([initLamda,initChiUp,initChiDn]), method = 'anderson')
+sol_object = optimize.root(selfConsistCond, np.array([initLamda,initChiUp,initChiDn]))
 print("\nSolution reached in "+str(selfConsistCond.counter)+" call:")
 print(sol_object.x)
 solLamda = sol_object.x[0]
@@ -112,19 +110,19 @@ solChiDn = sol_object.x[2]
 #### VARIOUS PLOTS ####
 #######################
 
-# tUp = hopping( 1,solChiUp,solChiDn)
-# tDn = hopping(-1,solChiDn,solChiUp)
-# bandsUp,eigVecsUp = eighOnMesh( 1,solLamda,tUp)
-# bandsDn,eigVecsDn = eighOnMesh(-1,solLamda,tDn)
+tUp = hopping( 1,solChiUp,solChiDn)
+tDn = hopping(-1,solChiDn,solChiUp)
+bandsUp,eigVecsUp = eighOnMesh( 1,solLamda,tUp)
+bandsDn,eigVecsDn = eighOnMesh(-1,solLamda,tDn)
 
-# #### BANDS FOR SPIN UP AND DOWN
-# X,Y = np.meshgrid(KY,KX)
-# fig = plt.figure()
-# ax = fig.gca(projection='3d')
-# for i in range(DIM):
-#     ax.plot_surface(X, Y, bandsUp[:,:,i])
-#     ax.plot_surface(X, Y, bandsDn[:,:,i])
-# plt.show()
+#### BANDS FOR SPIN UP AND DOWN
+X,Y = np.meshgrid(KY,KX)
+fig = plt.figure()
+ax = fig.gca(projection='3d')
+for i in range(DIM):
+    ax.plot_surface(X, Y, bandsUp[:,:,i])
+    ax.plot_surface(X, Y, bandsDn[:,:,i])
+plt.show()
 
 # #### PLOT FOR LAMBDA
 # res1d = 51

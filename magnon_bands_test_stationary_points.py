@@ -147,8 +147,8 @@ def compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T)
              + np.sum(Enks_ndiag_dn[:,:,1] * n_B(Enks_dn[:,:,1] / (kB * T))) \
              + np.sum(Enks_ndiag_dn[:,:,2] * n_B(Enks_dn[:,:,2] / (kB * T)))
 
-    chi_up = sum_s_up / Nt / np.absolute(ts_up)
-    chi_dn = sum_s_dn / Nt / np.absolute(ts_dn)
+    chi_up = 2 * sum_s_up / Nt / np.absolute(ts_up)
+    chi_dn = 2 * sum_s_dn / Nt / np.absolute(ts_dn)
 
     return (chi_up, chi_dn)
 

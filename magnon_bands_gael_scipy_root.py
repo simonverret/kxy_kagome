@@ -23,7 +23,7 @@ kB = 1
 
 B = 0.01 # magnetic field in unit of energy g * muB * B
 
-T = 0.1
+T = 1
 
 J = 1
 D = 0.2 * J
@@ -34,8 +34,8 @@ chi_dn_ini = -1
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
 # Contains the hexago volume in a rectangle of side pi x (2*pi/sqrt(3))
-kx = np.linspace(-pi / 3, 2 * pi / 3, 10)
-ky = np.linspace(-pi / sqrt(3), pi / sqrt(3), 10)
+kx = np.linspace(-pi / 3, 2 * pi / 3, 33)
+ky = np.linspace(-pi / sqrt(3), pi / sqrt(3), 33)
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
@@ -131,7 +131,7 @@ def compute_S(Enks_up, Enks_dn, T):
     sum_s_up = np.sum(n_B(Enks_up[:,:,0] / (kB * T))) + np.sum(n_B(Enks_up[:,:,1] / (kB * T))) + np.sum(n_B(Enks_up[:,:,2] / (kB * T)))
     sum_s_dn = np.sum(n_B(Enks_dn[:,:,0] / (kB * T))) + np.sum(n_B(Enks_dn[:,:,1] / (kB * T))) + np.sum(n_B(Enks_dn[:,:,2] / (kB * T)))
 
-    S = (sum_s_up + sum_s_dn) / Nt / 2
+    S = (sum_s_up + sum_s_dn) / Nt
 
     return S
 
@@ -147,8 +147,8 @@ def compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T)
              + np.sum(Enks_ndiag_dn[:,:,1] * n_B(Enks_dn[:,:,1] / (kB * T))) \
              + np.sum(Enks_ndiag_dn[:,:,2] * n_B(Enks_dn[:,:,2] / (kB * T)))
 
-    chi_up = sum_s_up / Nt / np.absolute(ts_up)
-    chi_dn = sum_s_dn / Nt / np.absolute(ts_dn)
+    chi_up = 2 * sum_s_up / Nt / np.absolute(ts_up)
+    chi_dn = 2 * sum_s_dn / Nt / np.absolute(ts_dn)
 
     return (chi_up, chi_dn)
 
