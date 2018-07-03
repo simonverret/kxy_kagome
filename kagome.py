@@ -15,7 +15,7 @@ eta3 =  np.array([-1,np.sqrt(3)])/2
 J=1
 D=0.2
 B=0.1
-T=0.2
+T=1
 resX = 33
 
 initLamda =  4.014814
@@ -28,8 +28,10 @@ KX= np.linspace( -np.pi/3.         , 2*np.pi/3.       , resX ) # the hexagonal B
 KY= np.linspace( -np.pi/np.sqrt(3) , np.pi/np.sqrt(3) , resY ) # so one can use a rectangle.
 unitVolume = np.pi * 2*np.pi/np.sqrt(3) / Nk
 
+
 def hopping(sigma,chiSig,chiOpp):
     return J*(chiSig+chiOpp) - 1j*sigma*D*chiOpp
+
 
 def hamiltonian(kx,ky,sigma,lamda,hop): # lambda with "b" is protected
     k = np.array([kx,ky])
@@ -37,11 +39,12 @@ def hamiltonian(kx,ky,sigma,lamda,hop): # lambda with "b" is protected
     cosk2 = np.cos(np.dot(k,eta2))
     cosk3 = np.cos(np.dot(k,eta3))
     h = np.matrix([
-        [ (lamda-sigma*B)/2 ,     hop*cosk1    ,        0         ],
-        [        0         , (lamda-sigma*B)/2 ,    hop*cosk2     ],
-        [    hop*cosk3     ,         0        , (lamda-sigma*B)/2 ]
+        [ (lamda-sigma*B)/2 ,     hop*cosk1     ,        0          ],
+        [         0         , (lamda-sigma*B)/2 ,    hop*cosk2      ],
+        [     hop*cosk3     ,         0         , (lamda-sigma*B)/2 ]
     ])
     return h + h.H  # conjuguate transpose hence /2 on the diagonal
+
 
 def eighOnMesh(sigma,lamda,hop):
     tensorShape = (len(KX),len(KY),DIM,DIM)
@@ -52,11 +55,14 @@ def eighOnMesh(sigma,lamda,hop):
     # print(hamiltonianOnMesh[10,10,:,:])
     return np.linalg.eigh(hamiltonianOnMesh)
 
+
 def bose(energ,beta=1/T):
     return 1.0/(np.exp(beta*energ)-1)
 
+
 def dummyIntegral(qtyOnMesh):
     return np.sum(qtyOnMesh) / Nk
+
 
 def selfConsistCond(varSet):
     selfConsistCond.counter += 1
@@ -88,6 +94,58 @@ def selfConsistCond(varSet):
 
     return np.array([conditionlamda,conditionChiUp,conditionChiDn])
 selfConsistCond.counter =0
+
+
+
+
+## Berry phase
+
+def dhdk(XorY,kx,ky,sigma,lamda,hop):
+    # XorY=0 for x, and 1 for y.
+    k = np.array([kx,ky])
+    etaSink1 = eta1[XorY]*np.sin(np.dot(k,eta1))
+    etaSink2 = eta2[XorY]*np.sin(np.dot(k,eta2))
+    etaSink3 = eta3[XorY]*np.sin(np.dot(k,eta3))
+    dhdk = np.matrix([
+        [       0         ,  -hop*etaSink1   ,       0         ],
+        [       0         ,        0         ,  hop*etaSink2   ],
+        [  hop*etaSink3   ,        0         ,       0         ]
+    ])
+    return dhdk + dhdk.H
+
+
+def dhdkOnMesh(sigma,lamda,hop):
+    tensorShape = (len(KX),len(KY),DIM,DIM)
+    dhdkxOnMesh = dhdkyOnMesh = np.empty(tensorShape,dtype=complex)
+    for i,kx in enumerate(KX):
+        for j,ky in enumerate(KY):
+            dhdkxOnMesh[i,j,:,:] = dhdk(0,kx,ky,sigma,lamda,hop)
+            dhdkyOnMesh[i,j,:,:] = dhdk(1,kx,ky,sigma,lamda,hop)
+    # print(hamiltonianOnMesh[10,10,:,:])
+    return dhdkxOnMesh, dhdkyOnMesh
+
+
+def berryPhaseOnMesh(bands,eigVecs,dhdkx,dhdky):
+    tensorShape = (len(KX),len(KY),DIM)
+    berryPhase = np.empty(tensorShape,dtype=complex)
+    for i in range(len(KX)):
+        for j in range(len(KX)):
+            for n in range(DIM):
+                rightx = np.dot(dhdkx[i,j,:,:],eigVecs[i,j,n,:])
+                righty = np.dot(dhdkx[i,j,:,:],eigVecs[i,j,n,:])
+                dvdkx = np.zeros(DIM,dtype=complex)
+                dvdky = np.zeros(DIM,dtype=complex)
+                for m in range(DIM):
+                    if (m != n):
+                        dvdkx += (np.dot(eigVecs[i,j,m,:],rightx[:])/(bands[i,j,n]-bands[i,j,m])) *eigVecs[i,j,m,:]
+                        dvdky += (np.dot(eigVecs[i,j,m,:],righty[:])/(bands[i,j,n]-bands[i,j,m])) *eigVecs[i,j,m,:]
+                berryPhase[i,j,n] = np.dot(dvdkx,dvdky)
+    return berryPhase
+
+
+
+
+
 
 #### UNCOMMENT FOR SINGLE INIT RUN and exit
 # solLamda = initLamda
@@ -122,6 +180,21 @@ ax = fig.gca(projection='3d')
 for i in range(DIM):
     ax.plot_surface(X, Y, bandsUp[:,:,i])
     ax.plot_surface(X, Y, bandsDn[:,:,i])
+plt.show()
+
+#### BERRY PHASE FOR SPIN UP AND DOWN
+dhdkx,dhdky = dhdkOnMesh( 1,solLamda,tUp)
+dhdkx,dhdky = dhdkOnMesh(-1,solLamda,tDn)
+
+omegaUp = berryPhaseOnMesh(bandsUp,eigVecsUp,dhdkx,dhdky)
+omegaDn = berryPhaseOnMesh(bandsDn,eigVecsDn,dhdkx,dhdky)
+
+X,Y = np.meshgrid(KY,KX)
+fig = plt.figure()
+ax = fig.gca(projection='3d')
+for i in range(DIM):
+    ax.plot_surface(X, Y, omegaUp[:,:,i])
+    ax.plot_surface(X, Y, omegaDn[:,:,i])
 plt.show()
 
 # #### PLOT FOR LAMBDA
