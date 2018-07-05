@@ -13,10 +13,10 @@ eta2 =  np.array([1,0])
 eta3 =  np.array([-1,np.sqrt(3)])/2
 
 J=1
-D=0.125
+D=0.1
 B=0.01
-T=1
-res = 60
+T=0.
+res = 10
 resX = res+1
 
 initLamda = +3.4284
@@ -77,12 +77,12 @@ def selfConsistCond(varSet):
     bandsDn = eighOnMesh(-1,lamda,tDn)[0]
 
     # Doki et al., Universal..., 2018, sup. mat. Eq.(S6a)
-    S = dummyIntegral( bose(bandsUp) + bose(bandsDn) )
+    S = dummyIntegral( bose(bandsUp) + bose(bandsDn) )/2.
     # Doki et al., Universal..., 2018, sup. mat. Eq.(S6b)
     fnkUp = (bandsUp-(lamda-B)) # =the eigenvalues of the hopping matrix
     fnkDn = (bandsDn-(lamda+B))
-    resChiUp = 2*dummyIntegral( fnkUp * bose(bandsUp) )/(np.abs(tUp))
-    resChiDn = 2*dummyIntegral( fnkDn * bose(bandsDn) )/(np.abs(tDn))
+    resChiUp = dummyIntegral( fnkUp * bose(bandsUp) )/(np.abs(tUp))
+    resChiDn = dummyIntegral( fnkDn * bose(bandsDn) )/(np.abs(tDn))
 
     conditionlamda = 2*S-1
     conditionChiUp = resChiUp-chiUp
@@ -125,24 +125,24 @@ def dhdkOnMesh(sigma,lamda,hop):
     return dhdkxOnMesh, dhdkyOnMesh
 
 
-def berryPhaseOnMeshBkp(bands,eigVecs,dhdkx,dhdky):
+def berryPhaseOnMesh(bands,eigVecs,dhdkx,dhdky):
     tensorShape = (len(KX),len(KY),DIM)
     berryPhase = np.zeros(tensorShape,dtype=complex)
     for i in range(len(KX)):
         for j in range(len(KX)):
             for n in range(DIM):
-                rightx = np.dot(dhdkx[i,j,:,:],eigVecs[i,j,n,:])
-                righty = np.dot(dhdky[i,j,:,:],eigVecs[i,j,n,:])
+                rightx = np.dot(dhdkx[i,j,:,:],eigVecs[i,j,:,n])
+                righty = np.dot(dhdky[i,j,:,:],eigVecs[i,j,:,n])
                 dvdkx = np.zeros(DIM,dtype=complex)
                 dvdky = np.zeros(DIM,dtype=complex)
                 for m in range(DIM):
                     if (m != n):
-                        dvdkx += (np.dot(np.conj(eigVecs[i,j,m,:]),rightx[:])/(bands[i,j,n]-bands[i,j,m])) *eigVecs[i,j,m,:]
-                        dvdky += (np.dot(np.conj(eigVecs[i,j,m,:]),righty[:])/(bands[i,j,n]-bands[i,j,m])) *eigVecs[i,j,m,:]
-                berryPhase[i,j,n] =  np.dot(np.conj(dvdkx),dvdky).real
+                        dvdkx += (np.dot(np.conj(eigVecs[i,j,:,m]),rightx[:])/(bands[i,j,n]-bands[i,j,m])) *eigVecs[i,j,:,m]
+                        dvdky += (np.dot(np.conj(eigVecs[i,j,:,m]),righty[:])/(bands[i,j,n]-bands[i,j,m])) *eigVecs[i,j,:,m]
+                berryPhase[i,j,n] =  np.real(np.dot(np.conj(dvdkx),dvdky))
     return berryPhase
 
-def berryPhaseOnMesh(bands,eigVecs,dhdkx,dhdky):
+def berryPhaseOnMeshBkp(bands,eigVecs,dhdkx,dhdky):
     tensorShape = (len(KX),len(KY),DIM)
     berryPhase = np.zeros(tensorShape)
     for i in range(len(KX)):
@@ -198,6 +198,7 @@ omegaDn = berryPhaseOnMesh(bandsDn,eigVecsDn,dhdkxDn,dhdkyDn)
 #     ax.plot_surface(X, Y, bandsUp[:,:,i])
 #     ax.plot_surface(X, Y, bandsDn[:,:,i])
 # plt.show()
+
 # #### BERRY CURVATURE in 3D
 # X,Y = np.meshgrid(KY,KX)
 # fig = plt.figure()
