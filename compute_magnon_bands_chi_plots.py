@@ -9,6 +9,8 @@ from mpl_toolkits.mplot3d import axes3d
 from functools import partial
 from scipy import optimize
 from numpy.linalg import multi_dot
+
+import package_kxy.bands_functions as bands_func
 ##>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
 
 ## Universal Constant :::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
@@ -39,141 +41,21 @@ ky = np.linspace(-pi / sqrt(3), pi / sqrt(3), 10)
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
-## Full Hamiltonian
-def hamiltonian(kx, ky, la, s, B, ts):
-
-    eta1 = - np.array([1, sqrt(3)]) / 2
-    eta2 = np.array([1, 0])
-    eta3 = np.array([-1, sqrt(3)]) / 2
-
-    k = np.array([kx, ky])
-
-    k1 = np.dot(k, eta1)
-    k2 = np.dot(k, eta2)
-    k3 = np.dot(k, eta3)
-
-    c1 = cos(k1)
-    c2 = cos(k2)
-    c3 = cos(k3)
-
-    diag_matrix = (la - s * B) * np.identity(3, dtype = complex)
-
-    tsc = np.conj(ts)
-
-    nondiag_matrix = np.array([[0, ts * c1, tsc * c3],
-                               [tsc * c1, 0, ts * c2],
-                               [ts * c3, tsc * c2, 0]])
-
-    Hks =  diag_matrix + nondiag_matrix
-
-    return Hks
-
-## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
-
-## Diaganolization function
-def diag_func(kx, ky, la, s, B, ts):
-
-    """
-    (i,j) -> (kx, ky)
-    n -> different eigenvalues E[n]
-    l -> different components of eigenvectors V[:, n]
-    """
-
-    Enks = np.zeros((len(kx), len(ky), 3), dtype = float) # dim: i, j, n
-    Vnks = np.zeros((len(kx), len(ky), 3, 3), dtype = complex) # dim: i, j, l, n
-
-    for i in range(len(kx)):
-        for j in range(len(ky)):
-
-            Enks[i, j, :], Vnks[i, j, :, :] = np.linalg.eigh(hamiltonian(kx[i], ky[j], la, s, B, ts))
-            # The column V[:, n] is the normalized eigenvector corresponding to the eigenvalue E[n]
-
-    # Eigen values of non-diagonal part of the hamiltonian
-    Enks_ndiag = Enks - ( la - s * B )
-
-    # Compute la_min for all Enks > 0
-    la_min = s * B - np.min(Enks_ndiag)
-
-    return Enks, Enks_ndiag, Vnks, la_min
-
-## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
-
-## Hopping term
-def compute_ts(chi_up, chi_dn, J, D, s):
-
-    if s == 1:
-        return J * ( chi_up + chi_dn ) - 1j * s * D * chi_dn
-    else:
-        return J * ( chi_up + chi_dn ) - 1j * s * D * chi_up
-
-
-ts_up_ini = compute_ts(chi_up_ini, chi_dn_ini, J, D, 1)
-ts_dn_ini = compute_ts(chi_up_ini, chi_dn_ini, J, D, -1)
-
-
-## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
-
-## Bose - Einstein statics
-def n_B(x):
-
-    index_pos = x > 0
-    index_neg = x <= 0
-
-    nB = np.zeros(np.shape(x))
-
-    nB[index_pos] = 1 / (exp(x[index_pos]) - 1)
-    nB[index_neg] = 0
-
-    return nB
-
-## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
-
-## Compute S = sum(Enks/kB*T)
-def compute_S(Enks_up, Enks_dn, T):
-
-    Nt = np.shape(Enks_up)[0] * np.shape(Enks_up)[1]
-
-    sum_s_up = np.sum(n_B(Enks_up[:,:,0] / (kB * T))) + np.sum(n_B(Enks_up[:,:,1] / (kB * T))) + np.sum(n_B(Enks_up[:,:,2] / (kB * T)))
-    sum_s_dn = np.sum(n_B(Enks_dn[:,:,0] / (kB * T))) + np.sum(n_B(Enks_dn[:,:,1] / (kB * T))) + np.sum(n_B(Enks_dn[:,:,2] / (kB * T)))
-
-    S = (sum_s_up + sum_s_dn) / Nt / 2
-
-    return S
-
-def compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T):
-
-    Nt = np.shape(Enks_up)[0] * np.shape(Enks_up)[1]
-
-    sum_s_up = np.sum(Enks_ndiag_up[:,:,0] * n_B(Enks_up[:,:,0] / (kB * T))) \
-             + np.sum(Enks_ndiag_up[:,:,1] * n_B(Enks_up[:,:,1] / (kB * T))) \
-             + np.sum(Enks_ndiag_up[:,:,2] * n_B(Enks_up[:,:,2] / (kB * T)))
-
-    sum_s_dn = np.sum(Enks_ndiag_dn[:,:,0] * n_B(Enks_dn[:,:,0] / (kB * T))) \
-             + np.sum(Enks_ndiag_dn[:,:,1] * n_B(Enks_dn[:,:,1] / (kB * T))) \
-             + np.sum(Enks_ndiag_dn[:,:,2] * n_B(Enks_dn[:,:,2] / (kB * T)))
-
-    chi_up = sum_s_up / Nt / np.absolute(ts_up)
-    chi_dn = sum_s_dn / Nt / np.absolute(ts_dn)
-
-    return (chi_up, chi_dn)
-
-## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
-
 def residual_chi(chi, la, kx, ky, B, T):
 
     chi_up = chi[0]
     chi_dn = chi[1]
 
     # Compute ts_up & ts_dn
-    ts_up = compute_ts(chi_up, chi_dn, J, D, 1)
-    ts_dn = compute_ts(chi_up, chi_dn, J, D, -1)
+    ts_up = bands_func.compute_ts(chi_up, chi_dn, J, D, 1)
+    ts_dn = bands_func.compute_ts(chi_up, chi_dn, J, D, -1)
 
     # Compute eigenvalues
-    Enks_up, Enks_ndiag_up = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)[0:2]
-    Enks_dn, Enks_ndiag_dn = diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)[0:2]
+    Enks_up, Enks_ndiag_up = bands_func.diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)[0:2]
+    Enks_dn, Enks_ndiag_dn = bands_func.diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)[0:2]
 
     # Compute residual_Chi
-    (chi_up_new, chi_dn_new) = compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T)
+    (chi_up_new, chi_dn_new) = bands_func.compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T)
     residual_chi_up = chi_up - chi_up_new
     residual_chi_dn = chi_dn - chi_dn_new
 
@@ -231,13 +113,13 @@ for i, laa in enumerate(la_array):
 
     print("for lambda = " + "{0:.2e}".format(laa) + " roots(chi_up, chi_dn ) = " + str(chi_roots))
 
-    ts_up = compute_ts(chi_roots[0], chi_roots[1], J, D, 1)
-    ts_dn = compute_ts(chi_roots[0], chi_roots[1], J, D, -1)
+    ts_up = bands_func.compute_ts(chi_roots[0], chi_roots[1], J, D, 1)
+    ts_dn = bands_func.compute_ts(chi_roots[0], chi_roots[1], J, D, -1)
 
-    Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = diag_func(kx, ky, laa, s = 1, B = B, ts = ts_up)
-    Enks_dn, Enks_ndiag_dn, Vnks_dn, la_min_dn = diag_func(kx, ky, laa, s = -1, B = B, ts = ts_dn)
+    Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = bands_func.diag_func(kx, ky, laa, s = 1, B = B, ts = ts_up)
+    Enks_dn, Enks_ndiag_dn, Vnks_dn, la_min_dn = bands_func.diag_func(kx, ky, laa, s = -1, B = B, ts = ts_dn)
 
-    S_array[i] = compute_S(Enks_up, Enks_dn, T)
+    S_array[i] = bands_func.compute_S(Enks_up, Enks_dn, T)
 
 
 #///// Plot /////#
@@ -290,13 +172,13 @@ n = 0
 for i, chi_up in enumerate(chi_up_array):
     for j, chi_dn in enumerate(chi_dn_array):
 
-        ts_up = compute_ts(chi_up, chi_dn, J, D, 1)
-        ts_dn = compute_ts(chi_up, chi_dn, J, D, -1)
+        ts_up = bands_func.compute_ts(chi_up, chi_dn, J, D, 1)
+        ts_dn = bands_func.compute_ts(chi_up, chi_dn, J, D, -1)
 
-        Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)
-        Enks_dn, Enks_ndiag_dn, Vnks_dn, la_min_dn = diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)
+        Enks_up, Enks_ndiag_up, Vnks_up, la_min_up = bands_func.diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)
+        Enks_dn, Enks_ndiag_dn, Vnks_dn, la_min_dn = bands_func.diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)
 
-        (chi_up_new, chi_dn_new) = compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T)
+        (chi_up_new, chi_dn_new) = bands_func.compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T)
 
         diff_chi_up[i, j] = chi_up_new - chi_up
         diff_chi_dn[i, j] = chi_dn_new - chi_dn
@@ -376,6 +258,3 @@ fig.savefig("chi_up_dn_la=" + str(la) + "_J="+ str(J) + "_T="+ str(T) + "_B="+ s
 
 
 plt.show()
-
-
-
