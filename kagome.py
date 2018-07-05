@@ -1,6 +1,6 @@
 import numpy as np
 from scipy import optimize
-np.set_printoptions(6,suppress=True,sign="+",floatmode="fixed")
+np.set_printoptions(10,suppress=True,sign="+",floatmode="fixed")
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -13,18 +13,20 @@ eta2 =  np.array([1,0])
 eta3 =  np.array([-1,np.sqrt(3)])/2
 
 J=1
-D=0.2
-B=0.1
+D=0.125
+B=0
+1
 T=1
-resX = 33
+res = 120
+resX = res+1
 
-initLamda =  4.014814
-initChiUp = -1.804222
-initChiDn = -0.153052
+initLamda = +3.4252088421
+initChiUp = -0.6091298075
+initChiDn = -0.5930922894
 
 resY = resX # previously squarer: int( resX * 2/np.sqrt(3) )
 Nk = resX*resY
-KX= np.linspace( -np.pi/3.         , 2*np.pi/3.       , resX ) # the hexagonal BZ is periodic
+KX= np.linspace( -np.pi/3.         , 2*np.pi/3       , resX ) # the hexagonal BZ is periodic
 KY= np.linspace( -np.pi/np.sqrt(3) , np.pi/np.sqrt(3) , resY ) # so one can use a rectangle.
 unitVolume = np.pi * 2*np.pi/np.sqrt(3) / Nk
 
@@ -125,32 +127,49 @@ def dhdkOnMesh(sigma,lamda,hop):
     return dhdkxOnMesh, dhdkyOnMesh
 
 
-def berryPhaseOnMesh(bands,eigVecs,dhdkx,dhdky):
+def berryPhaseOnMeshBkp(bands,eigVecs,dhdkx,dhdky):
     tensorShape = (len(KX),len(KY),DIM)
-    berryPhase = np.empty(tensorShape,dtype=complex)
+    berryPhase = np.zeros(tensorShape,dtype=complex)
     for i in range(len(KX)):
         for j in range(len(KX)):
             for n in range(DIM):
                 rightx = np.dot(dhdkx[i,j,:,:],eigVecs[i,j,n,:])
-                righty = np.dot(dhdkx[i,j,:,:],eigVecs[i,j,n,:])
+                righty = np.dot(dhdky[i,j,:,:],eigVecs[i,j,n,:])
                 dvdkx = np.zeros(DIM,dtype=complex)
                 dvdky = np.zeros(DIM,dtype=complex)
                 for m in range(DIM):
                     if (m != n):
-                        dvdkx += (np.dot(eigVecs[i,j,m,:],rightx[:])/(bands[i,j,n]-bands[i,j,m])) *eigVecs[i,j,m,:]
-                        dvdky += (np.dot(eigVecs[i,j,m,:],righty[:])/(bands[i,j,n]-bands[i,j,m])) *eigVecs[i,j,m,:]
-                berryPhase[i,j,n] = np.dot(dvdkx,dvdky)
+                        dvdkx += (np.dot(np.conj(eigVecs[i,j,m,:]),rightx[:])/(bands[i,j,n]-bands[i,j,m])) *eigVecs[i,j,m,:]
+                        dvdky += (np.dot(np.conj(eigVecs[i,j,m,:]),righty[:])/(bands[i,j,n]-bands[i,j,m])) *eigVecs[i,j,m,:]
+                berryPhase[i,j,n] =  np.dot(np.conj(dvdkx),dvdky).real
+    return berryPhase
+
+def berryPhaseOnMesh(bands,eigVecs,dhdkx,dhdky):
+    tensorShape = (len(KX),len(KY),DIM)
+    berryPhase = np.zeros(tensorShape)
+    for i in range(len(KX)):
+        for j in range(len(KX)):
+            dHdkx = dhdkx[i,j,:,:]
+            dHdky = dhdky[i,j,:,:]            
+            for n in range(DIM):
+                ketn = eigVecs[i,j,:,n]
+                bran = np.conj(ketn)
+                En = bands[i,j,n]
+                for m in range(DIM):
+                    if (m != n):
+                        ketm = eigVecs[i,j,:,m]
+                        bram = np.conj(ketm)
+                        Em = bands[i,j,m]
+                        berryPhase[i,j,n] += 2*np.real(np.linalg.multi_dot([bran,dHdkx,ketm])*np.linalg.multi_dot([bram,dHdky,ketn])/(En-Em))
     return berryPhase
 
 
 
 
-
-
 #### UNCOMMENT FOR SINGLE INIT RUN and exit
-# solLamda = initLamda
-# solChiUp = initChiUp
-# solChiDn = initChiDn
+solLamda = initLamda
+solChiUp = initChiUp
+solChiDn = initChiDn
 # selfConsistCond([initLamda,initChiUp,initChiDn])
 # exit(1)
 
@@ -172,23 +191,13 @@ tUp = hopping( 1,solChiUp,solChiDn)
 tDn = hopping(-1,solChiDn,solChiUp)
 bandsUp,eigVecsUp = eighOnMesh( 1,solLamda,tUp)
 bandsDn,eigVecsDn = eighOnMesh(-1,solLamda,tDn)
+dhdkxUp,dhdkyUp = dhdkOnMesh( 1,solLamda,tUp)
+dhdkxDn,dhdkyDn = dhdkOnMesh(-1,solLamda,tDn)
+omegaUp = berryPhaseOnMesh(bandsUp,eigVecsUp,dhdkxUp,dhdkyUp)
+omegaDn = berryPhaseOnMesh(bandsDn,eigVecsDn,dhdkxDn,dhdkyDn)
 
-#### BANDS FOR SPIN UP AND DOWN
-X,Y = np.meshgrid(KY,KX)
-fig = plt.figure()
-ax = fig.gca(projection='3d')
-for i in range(DIM):
-    ax.plot_surface(X, Y, bandsUp[:,:,i])
-    ax.plot_surface(X, Y, bandsDn[:,:,i])
-plt.show()
 
-#### BERRY PHASE FOR SPIN UP AND DOWN
-dhdkx,dhdky = dhdkOnMesh( 1,solLamda,tUp)
-dhdkx,dhdky = dhdkOnMesh(-1,solLamda,tDn)
-
-omegaUp = berryPhaseOnMesh(bandsUp,eigVecsUp,dhdkx,dhdky)
-omegaDn = berryPhaseOnMesh(bandsDn,eigVecsDn,dhdkx,dhdky)
-
+#### BANDS FOR SPIN UP AND DOWN in 3D
 X,Y = np.meshgrid(KY,KX)
 fig = plt.figure()
 ax = fig.gca(projection='3d')
@@ -196,6 +205,33 @@ for i in range(DIM):
     ax.plot_surface(X, Y, omegaUp[:,:,i])
     ax.plot_surface(X, Y, omegaDn[:,:,i])
 plt.show()
+#### BERRY CURVATURE in 3D
+X,Y = np.meshgrid(KY,KX)
+fig = plt.figure()
+ax = fig.gca(projection='3d')
+for i in range(DIM):
+    ax.plot_surface(X, Y, omegaUp[:,:,i])
+    ax.plot_surface(X, Y, omegaDn[:,:,i])
+plt.show()
+
+
+#### BANDS AND BERRY ALONG KX
+# zerox = int(res/3)+1
+# zeroy = int(res/2)
+# overx = int(res/12)+1
+# Xplt = np.concatenate( ((KX[zerox:],(KX[:overx]+np.pi))) )/(np.pi)
+# fig,ax = plt.subplots(2, sharex=True)
+# for i in range(DIM):
+#     ZpltUp = np.concatenate(( bandsUp[zerox:,zeroy,i],bandsUp[:overx,0,i] ))
+#     ZpltDn = np.concatenate(( bandsDn[zerox:,zeroy,i],bandsDn[:overx,0,i] ))
+#     ax[0].plot(Xplt, ZpltUp)
+#     ax[0].plot(Xplt, ZpltDn)
+# for i in range(DIM):
+#     ZpltUp = np.concatenate(( omegaUp[zerox:,zeroy,i],omegaUp[:overx,0,i] ))
+#     ZpltDn = np.concatenate(( omegaDn[zerox:,zeroy,i],omegaDn[:overx,0,i] ))
+#     ax[1].plot(Xplt, ZpltUp)
+#     ax[1].plot(Xplt, ZpltDn)
+# plt.show()
 
 # #### PLOT FOR LAMBDA
 # res1d = 51
