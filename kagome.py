@@ -1,6 +1,6 @@
 import numpy as np
 from scipy import optimize
-np.set_printoptions(10,suppress=True,sign="+",floatmode="fixed")
+np.set_printoptions(4,suppress=True,sign="+",floatmode="fixed")
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -14,15 +14,14 @@ eta3 =  np.array([-1,np.sqrt(3)])/2
 
 J=1
 D=0.125
-B=0
-1
+B=0.01
 T=1
-res = 120
+res = 60
 resX = res+1
 
-initLamda = +3.4252088421
-initChiUp = -0.6091298075
-initChiDn = -0.5930922894
+initLamda = +3.4284
+initChiUp = -0.6138
+initChiDn = -0.5976
 
 resY = resX # previously squarer: int( resX * 2/np.sqrt(3) )
 Nk = resX*resY
@@ -105,13 +104,13 @@ selfConsistCond.counter =0
 def dhdk(XorY,kx,ky,sigma,lamda,hop):
     # XorY=0 for x, and 1 for y.
     k = np.array([kx,ky])
-    etaSink1 = eta1[XorY]*np.sin(np.dot(k,eta1))
-    etaSink2 = eta2[XorY]*np.sin(np.dot(k,eta2))
-    etaSink3 = eta3[XorY]*np.sin(np.dot(k,eta3))
+    etaSink1 = -eta1[XorY]*np.sin(np.dot(k,eta1))
+    etaSink2 = -eta2[XorY]*np.sin(np.dot(k,eta2))
+    etaSink3 = -eta3[XorY]*np.sin(np.dot(k,eta3))
     dhdk = np.matrix([
-        [       0         ,  -hop*etaSink1   ,       0         ],
-        [       0         ,        0         ,  hop*etaSink2   ],
-        [  hop*etaSink3   ,        0         ,       0         ]
+        [       0         ,  hop*etaSink1   ,       0         ],
+        [       0         ,        0         ,  hop*etaSink2  ],
+        [  hop*etaSink3  ,        0         ,       0         ]
     ])
     return dhdk + dhdk.H
 
@@ -123,7 +122,6 @@ def dhdkOnMesh(sigma,lamda,hop):
         for j,ky in enumerate(KY):
             dhdkxOnMesh[i,j,:,:] = dhdk(0,kx,ky,sigma,lamda,hop)
             dhdkyOnMesh[i,j,:,:] = dhdk(1,kx,ky,sigma,lamda,hop)
-    # print(hamiltonianOnMesh[10,10,:,:])
     return dhdkxOnMesh, dhdkyOnMesh
 
 
@@ -160,18 +158,15 @@ def berryPhaseOnMesh(bands,eigVecs,dhdkx,dhdky):
                         ketm = eigVecs[i,j,:,m]
                         bram = np.conj(ketm)
                         Em = bands[i,j,m]
-                        berryPhase[i,j,n] += 2*np.real(np.linalg.multi_dot([bran,dHdkx,ketm])*np.linalg.multi_dot([bram,dHdky,ketn])/(En-Em))
+                        berryPhase[i,j,n] += np.real(np.linalg.multi_dot([bran,dHdkx,ketm])*np.linalg.multi_dot([bram,dHdky,ketn])/((En-Em)**2))
     return berryPhase
 
 
 
 
-#### UNCOMMENT FOR SINGLE INIT RUN and exit
 solLamda = initLamda
 solChiUp = initChiUp
 solChiDn = initChiDn
-# selfConsistCond([initLamda,initChiUp,initChiDn])
-# exit(1)
 
 sol_object = optimize.root(selfConsistCond, np.array([initLamda,initChiUp,initChiDn]))
 print("\nSolution reached in "+str(selfConsistCond.counter)+" call:")
@@ -179,8 +174,6 @@ print(sol_object.x)
 solLamda = sol_object.x[0]
 solChiUp = sol_object.x[1]
 solChiDn = sol_object.x[2]
-
-
 
 
 #######################
@@ -197,41 +190,45 @@ omegaUp = berryPhaseOnMesh(bandsUp,eigVecsUp,dhdkxUp,dhdkyUp)
 omegaDn = berryPhaseOnMesh(bandsDn,eigVecsDn,dhdkxDn,dhdkyDn)
 
 
-#### BANDS FOR SPIN UP AND DOWN in 3D
-X,Y = np.meshgrid(KY,KX)
-fig = plt.figure()
-ax = fig.gca(projection='3d')
-for i in range(DIM):
-    ax.plot_surface(X, Y, omegaUp[:,:,i])
-    ax.plot_surface(X, Y, omegaDn[:,:,i])
-plt.show()
-#### BERRY CURVATURE in 3D
-X,Y = np.meshgrid(KY,KX)
-fig = plt.figure()
-ax = fig.gca(projection='3d')
-for i in range(DIM):
-    ax.plot_surface(X, Y, omegaUp[:,:,i])
-    ax.plot_surface(X, Y, omegaDn[:,:,i])
-plt.show()
-
-
-#### BANDS AND BERRY ALONG KX
-# zerox = int(res/3)+1
-# zeroy = int(res/2)
-# overx = int(res/12)+1
-# Xplt = np.concatenate( ((KX[zerox:],(KX[:overx]+np.pi))) )/(np.pi)
-# fig,ax = plt.subplots(2, sharex=True)
+# #### BANDS FOR SPIN UP AND DOWN in 3D
+# X,Y = np.meshgrid(KY,KX)
+# fig = plt.figure()
+# ax = fig.gca(projection='3d')
 # for i in range(DIM):
-#     ZpltUp = np.concatenate(( bandsUp[zerox:,zeroy,i],bandsUp[:overx,0,i] ))
-#     ZpltDn = np.concatenate(( bandsDn[zerox:,zeroy,i],bandsDn[:overx,0,i] ))
-#     ax[0].plot(Xplt, ZpltUp)
-#     ax[0].plot(Xplt, ZpltDn)
-# for i in range(DIM):
-#     ZpltUp = np.concatenate(( omegaUp[zerox:,zeroy,i],omegaUp[:overx,0,i] ))
-#     ZpltDn = np.concatenate(( omegaDn[zerox:,zeroy,i],omegaDn[:overx,0,i] ))
-#     ax[1].plot(Xplt, ZpltUp)
-#     ax[1].plot(Xplt, ZpltDn)
+#     ax.plot_surface(X, Y, bandsUp[:,:,i])
+#     ax.plot_surface(X, Y, bandsDn[:,:,i])
 # plt.show()
+# #### BERRY CURVATURE in 3D
+# X,Y = np.meshgrid(KY,KX)
+# fig = plt.figure()
+# ax = fig.gca(projection='3d')
+# for i in range(DIM):
+#     ax.plot_surface(X, Y, omegaUp[:,:,i])
+#     ax.plot_surface(X, Y, omegaDn[:,:,i])
+# plt.show()
+
+
+### BANDS AND BERRY ALONG KX
+zerox = int(res/3)+1
+zeroy = int(res/2)
+overx = int(res/6)+1
+Xplt = np.concatenate( ((KX[zerox:],(KX[:overx]+np.pi))) )/(np.pi)
+fig,ax = plt.subplots(2, sharex=True)
+for i in range(DIM):
+    ZpltUp = np.concatenate(( bandsUp[zerox:,zeroy,i],bandsUp[:overx,0,i] ))
+    ZpltDn = np.concatenate(( bandsDn[zerox:,zeroy,i],bandsDn[:overx,0,i] ))
+    ax[0].plot(Xplt, ZpltUp)
+    ax[0].plot(Xplt, ZpltDn)
+for i in range(DIM):
+    ZpltUp = np.concatenate(( omegaUp[zerox:,zeroy,i],omegaUp[:overx,0,i] ))
+    #ZpltDn = np.concatenate(( omegaDn[zerox:,zeroy,i],omegaDn[:overx,0,i] ))
+    ax[1].plot(Xplt, ZpltUp)
+    #ax[1].plot(Xplt, ZpltDn)
+plt.show()
+
+
+
+
 
 # #### PLOT FOR LAMBDA
 # res1d = 51
