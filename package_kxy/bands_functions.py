@@ -49,7 +49,7 @@ def hamiltonian(kx, ky, la, s, B, ts):
 ## Derivative dH/dkx
 def derivative_kx_hamiltonian(kx, ky, la, s, B, ts):
 
-    eta1 = - np.array([1, sqrt(3)]) / 2
+    eta1 = np.array([-1, -sqrt(3)]) / 2
     eta2 = np.array([1, 0])
     eta3 = np.array([-1, sqrt(3)]) / 2
 
@@ -65,9 +65,9 @@ def derivative_kx_hamiltonian(kx, ky, la, s, B, ts):
 
     tsc = np.conj(ts)
 
-    dHks_dkx = np.array([[0, ts * s1, tsc * s3],
-                               [tsc * s1, 0, ts * s2],
-                               [ts * s3, tsc * s2, 0]])
+    dHks_dkx = np.array([[0       , ts * s1 , tsc * s3],
+                         [tsc * s1, 0       , ts * s2 ],
+                         [ts * s3 , tsc * s2, 0       ]])
 
 
 
@@ -78,7 +78,7 @@ def derivative_kx_hamiltonian(kx, ky, la, s, B, ts):
 ## Derivative dH/dky
 def derivative_ky_hamiltonian(kx, ky, la, s, B, ts):
 
-    eta1 = - np.array([1, sqrt(3)]) / 2
+    eta1 = np.array([-1, -sqrt(3)]) / 2
     eta2 = np.array([1, 0])
     eta3 = np.array([-1, sqrt(3)]) / 2
 
@@ -94,9 +94,9 @@ def derivative_ky_hamiltonian(kx, ky, la, s, B, ts):
 
     tsc = np.conj(ts)
 
-    dHks_dky = np.array([[0, ts * s1, tsc * s3],
-                        [tsc * s1, 0, ts * s2],
-                        [ts * s3, tsc * s2, 0]])
+    dHks_dky = np.array([[0       , ts * s1 , tsc * s3],
+                         [tsc * s1, 0       , ts * s2 ],
+                         [ts * s3 , tsc * s2, 0       ]])
 
     return dHks_dky
 
@@ -114,7 +114,7 @@ def diag_func(kx, ky, la, s, B, ts):
     Enks = np.zeros((len(kx), len(ky), 3), dtype = float) # dim: i, j, n
     Vnks = np.zeros((len(kx), len(ky), 3, 3), dtype = complex) # dim: i, j, l, n
 
-    dHks_dky = np.zeros((len(kx), len(ky), 3, 3), dtype = complex) # dim: i, j, n x n (matrix dim)
+    dHks_dkx = np.zeros((len(kx), len(ky), 3, 3), dtype = complex) # dim: i, j, n x n (matrix dim)
     dHks_dky = np.zeros((len(kx), len(ky), 3, 3), dtype = complex) # dim: i, j, n x n (matrix dim)
 
     for i in range(len(kx)):
@@ -124,7 +124,7 @@ def diag_func(kx, ky, la, s, B, ts):
             # The column V[:, n] is the normalized eigenvector corresponding to the eigenvalue E[n]
 
             # Hamiltonian derivative
-            dHks_dky[i, j, :, :] = derivative_kx_hamiltonian(kx[i], ky[j], la, s, B, ts)
+            dHks_dkx[i, j, :, :] = derivative_kx_hamiltonian(kx[i], ky[j], la, s, B, ts)
             dHks_dky[i, j, :, :] = derivative_ky_hamiltonian(kx[i], ky[j], la, s, B, ts)
 
     # Eigen values of non-diagonal part of the hamiltonian
@@ -133,7 +133,7 @@ def diag_func(kx, ky, la, s, B, ts):
     # Compute la_min for all Enks > 0
     la_min = s * B - np.min(Enks_ndiag)
 
-    return Enks, Enks_ndiag, Vnks, dHks_dky, dHks_dky, la_min
+    return Enks, Enks_ndiag, Vnks, dHks_dkx, dHks_dky, la_min
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
@@ -170,7 +170,7 @@ def compute_S(Enks_up, Enks_dn, T):
     sum_s_up = np.sum(n_B(Enks_up[:,:,0] / (kB * T))) + np.sum(n_B(Enks_up[:,:,1] / (kB * T))) + np.sum(n_B(Enks_up[:,:,2] / (kB * T)))
     sum_s_dn = np.sum(n_B(Enks_dn[:,:,0] / (kB * T))) + np.sum(n_B(Enks_dn[:,:,1] / (kB * T))) + np.sum(n_B(Enks_dn[:,:,2] / (kB * T)))
 
-    S = (sum_s_up + sum_s_dn) / Nt
+    S = (sum_s_up + sum_s_dn) / Nt / 2
 
     return S
 
@@ -186,8 +186,8 @@ def compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T)
              + np.sum(Enks_ndiag_dn[:,:,1] * n_B(Enks_dn[:,:,1] / (kB * T))) \
              + np.sum(Enks_ndiag_dn[:,:,2] * n_B(Enks_dn[:,:,2] / (kB * T)))
 
-    chi_up = 2 * sum_s_up / Nt / np.absolute(ts_up)
-    chi_dn = 2 * sum_s_dn / Nt / np.absolute(ts_dn)
+    chi_up = sum_s_up / Nt / np.absolute(ts_up)
+    chi_dn = sum_s_dn / Nt / np.absolute(ts_dn)
 
     return (chi_up, chi_dn)
 
@@ -230,7 +230,7 @@ def residual_S_chi(pars, kx, ky, B, J, D, T):
 
 ## Berry phase
 
-def berry_phase(Enks, Vnks, dHskx, dHks_dky):
+def berry_phase(Enks, Vnks, dHks_dkx, dHks_dky):
 
     """
     (i,j) -> (kx, ky)
@@ -249,24 +249,23 @@ def berry_phase(Enks, Vnks, dHskx, dHks_dky):
     for i in range(len_kx):
         for j in range(len_ky):
 
-            dVnks_dkx[i,j,:,0] = multi_dot([Vnks[i,j,:,1], dHks_dky[i, j, :, :], Vnks[i,j,:,0]]) / (Enks[i, j, 0] - Enks[i, j, 1]) * Vnks[i,j,:,1]  \
-                           + multi_dot([Vnks[i,j,:,2], dHks_dky[i, j, :, :], Vnks[i,j,:,0]]) / (Enks[i, j, 0] - Enks[i, j, 2]) * Vnks[i,j,:,2]
-            dVnks_dkx[i,j,:,1] = multi_dot([Vnks[i,j,:,0], dHks_dky[i, j, :, :], Vnks[i,j,:,1]]) / (Enks[i, j, 1] - Enks[i, j, 0]) * Vnks[i,j,:,0]  \
-                           + multi_dot([Vnks[i,j,:,2], dHks_dky[i, j, :, :], Vnks[i,j,:,1]]) / (Enks[i, j, 1] - Enks[i, j, 2]) * Vnks[i,j,:,2]
-            dVnks_dkx[i,j,:,2] = multi_dot([Vnks[i,j,:,0], dHks_dky[i, j, :, :], Vnks[i,j,:,2]]) / (Enks[i, j, 2] - Enks[i, j, 0]) * Vnks[i,j,:,0]  \
-                           + multi_dot([Vnks[i,j,:,1], dHks_dky[i, j, :, :], Vnks[i,j,:,2]]) / (Enks[i, j, 2] - Enks[i, j, 1]) * Vnks[i,j,:,1]
+            dVnks_dkx[i,j,:,0] = multi_dot([np.conj(Vnks[i,j,:,1]), dHks_dkx[i, j, :, :], Vnks[i,j,:,0]]) / (Enks[i, j, 0] - Enks[i, j, 1]) * Vnks[i,j,:,1]  \
+                               + multi_dot([np.conj(Vnks[i,j,:,2]), dHks_dkx[i, j, :, :], Vnks[i,j,:,0]]) / (Enks[i, j, 0] - Enks[i, j, 2]) * Vnks[i,j,:,2]
+            dVnks_dkx[i,j,:,1] = multi_dot([np.conj(Vnks[i,j,:,0]), dHks_dkx[i, j, :, :], Vnks[i,j,:,1]]) / (Enks[i, j, 1] - Enks[i, j, 0]) * Vnks[i,j,:,0]  \
+                               + multi_dot([np.conj(Vnks[i,j,:,2]), dHks_dkx[i, j, :, :], Vnks[i,j,:,1]]) / (Enks[i, j, 1] - Enks[i, j, 2]) * Vnks[i,j,:,2]
+            dVnks_dkx[i,j,:,2] = multi_dot([np.conj(Vnks[i,j,:,0]), dHks_dkx[i, j, :, :], Vnks[i,j,:,2]]) / (Enks[i, j, 2] - Enks[i, j, 0]) * Vnks[i,j,:,0]  \
+                               + multi_dot([np.conj(Vnks[i,j,:,1]), dHks_dkx[i, j, :, :], Vnks[i,j,:,2]]) / (Enks[i, j, 2] - Enks[i, j, 1]) * Vnks[i,j,:,1]
 
-            dVnks_dky[i,j,:,0] = multi_dot([Vnks[i,j,:,1], dHks_dky[i, j, :, :], Vnks[i,j,:,0]]) / (Enks[i, j, 0] - Enks[i, j, 1]) * Vnks[i,j,:,1]  \
-                           + multi_dot([Vnks[i,j,:,2], dHks_dky[i, j, :, :], Vnks[i,j,:,0]]) / (Enks[i, j, 0] - Enks[i, j, 2]) * Vnks[i,j,:,2]
-            dVnks_dky[i,j,:,1] = multi_dot([Vnks[i,j,:,0], dHks_dky[i, j, :, :], Vnks[i,j,:,1]]) / (Enks[i, j, 1] - Enks[i, j, 0]) * Vnks[i,j,:,0]  \
-                           + multi_dot([Vnks[i,j,:,2], dHks_dky[i, j, :, :], Vnks[i,j,:,1]]) / (Enks[i, j, 1] - Enks[i, j, 2]) * Vnks[i,j,:,2]
-            dVnks_dky[i,j,:,2] = multi_dot([Vnks[i,j,:,0], dHks_dky[i, j, :, :], Vnks[i,j,:,2]]) / (Enks[i, j, 2] - Enks[i, j, 0]) * Vnks[i,j,:,0]  \
-                           + multi_dot([Vnks[i,j,:,1], dHks_dky[i, j, :, :], Vnks[i,j,:,2]]) / (Enks[i, j, 2] - Enks[i, j, 1]) * Vnks[i,j,:,1]
+            dVnks_dky[i,j,:,0] = multi_dot([np.conj(Vnks[i,j,:,1]), dHks_dky[i, j, :, :], Vnks[i,j,:,0]]) / (Enks[i, j, 0] - Enks[i, j, 1]) * Vnks[i,j,:,1]  \
+                               + multi_dot([np.conj(Vnks[i,j,:,2]), dHks_dky[i, j, :, :], Vnks[i,j,:,0]]) / (Enks[i, j, 0] - Enks[i, j, 2]) * Vnks[i,j,:,2]
+            dVnks_dky[i,j,:,1] = multi_dot([np.conj(Vnks[i,j,:,0]), dHks_dky[i, j, :, :], Vnks[i,j,:,1]]) / (Enks[i, j, 1] - Enks[i, j, 0]) * Vnks[i,j,:,0]  \
+                               + multi_dot([np.conj(Vnks[i,j,:,2]), dHks_dky[i, j, :, :], Vnks[i,j,:,1]]) / (Enks[i, j, 1] - Enks[i, j, 2]) * Vnks[i,j,:,2]
+            dVnks_dky[i,j,:,2] = multi_dot([np.conj(Vnks[i,j,:,0]), dHks_dky[i, j, :, :], Vnks[i,j,:,2]]) / (Enks[i, j, 2] - Enks[i, j, 0]) * Vnks[i,j,:,0]  \
+                               + multi_dot([np.conj(Vnks[i,j,:,1]), dHks_dky[i, j, :, :], Vnks[i,j,:,2]]) / (Enks[i, j, 2] - Enks[i, j, 1]) * Vnks[i,j,:,1]
 
-
-            Omega_nks[i,j,0] = 2 * np.real( 1j * np.dot(dVnks_dkx[i,j,:,0],dVnks_dky[i,j,:,0]))
-            Omega_nks[i,j,1] = 2 * np.real( 1j * np.dot(dVnks_dkx[i,j,:,1],dVnks_dky[i,j,:,1]))
-            Omega_nks[i,j,2] = 2 * np.real( 1j * np.dot(dVnks_dkx[i,j,:,2],dVnks_dky[i,j,:,2]))
+            Omega_nks[i,j,0] = 2 * np.real( 1j * np.dot(np.conj(dVnks_dkx[i,j,:,0]),dVnks_dky[i,j,:,0]))
+            Omega_nks[i,j,1] = 2 * np.real( 1j * np.dot(np.conj(dVnks_dkx[i,j,:,1]),dVnks_dky[i,j,:,1]))
+            Omega_nks[i,j,2] = 2 * np.real( 1j * np.dot(np.conj(dVnks_dkx[i,j,:,2]),dVnks_dky[i,j,:,2]))
 
     return Omega_nks
 

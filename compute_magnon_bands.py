@@ -28,7 +28,7 @@ B = 0.01 # magnetic field in unit of energy g * muB * B
 T = 1
 
 J = 1
-D = 0.2 * J
+D = 0.25 * J
 
 chi_up_ini = -1
 chi_dn_ini = -1
@@ -61,7 +61,7 @@ p_residual_S_chi = partial(bands_func.residual_S_chi, kx = kx, ky = ky, B = B, D
 # starting from chi_ini ~ 0 to higher values, as the non trivial roots are the second
 # roots to find before chi_function becomes discontinous:
 
-chi_steps = np.arange(0.01, 5, 0.2)
+chi_steps = np.arange(0.41, 5, 0.2)
 for chi_ini in chi_steps:
 
         out = optimize.root(p_residual_S_chi, np.array([la_min, -chi_ini, -chi_ini]))
@@ -147,8 +147,8 @@ for tick in axes.yaxis.get_major_ticks():
 
 #///// Plot /////#
 
-Enks_up, Enks_ndiag_up, Vnks_up, dHks_dky_up, dHks_dky_up = bands_func.diag_func(kx, np.zeros(1), la, s = 1, B = B, ts = ts_up)[0:-1]
-Omega_nks_up = bands_func.berry_phase(Enks_up, Vnks_up, dHks_dky_up, dHks_dky_up)
+Enks_up, Enks_ndiag_up, Vnks_up, dHks_dkx_up, dHks_dky_up = bands_func.diag_func(kx, np.zeros(1), la, s = 1, B = B, ts = ts_up)[0:-1]
+Omega_nks_up = bands_func.berry_phase(Enks_up, Vnks_up, dHks_dkx_up, dHks_dky_up)
 
 line = axes.plot(kx / pi, Omega_nks_up[:,0, 0])
 plt.setp(line, ls = "-", c = '#FF0000', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
@@ -157,8 +157,8 @@ plt.setp(line, ls = "-", c = '#00E054', lw = 3, marker = "", mfc = 'w', ms = 6.5
 line = axes.plot(kx / pi, Omega_nks_up[:,0, 2])
 plt.setp(line, ls = "-", c = '#7D44FF', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#7D44FF', mew = 2.5)
 
-# Enks_dn, Enks_ndiag_dn, Vnks_dn, dHks_dky_dn, dHks_dky_dn = bands_func.diag_func(kx, np.zeros(1), la, s = -1, B = B, ts = ts_dn)[0:-1]
-# Omega_nks_dn = bands_func.berry_phase(Enks_dn, Vnks_dn, dHks_dky_dn, dHks_dky_dn)
+# Enks_dn, Enks_ndiag_dn, Vnks_dn, dHks_dkx_dn, dHks_dky_dn = bands_func.diag_func(kx, np.zeros(1), la, s = -1, B = B, ts = ts_dn)[0:-1]
+# Omega_nks_dn = bands_func.berry_phase(Enks_dn, Vnks_dn, dHks_dkx_dn, dHks_dky_dn)
 
 # line = axes.plot(kx / pi, Omega_nks_dn[:,0, 0])
 # plt.setp(line, ls = "--", c = '#FF0000', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
