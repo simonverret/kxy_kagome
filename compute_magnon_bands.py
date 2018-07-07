@@ -136,81 +136,90 @@ axes.set_ylabel(r"$S$", labelpad = 8)
 
 
 
-# ## Berry phase vs kx ky = 0 :::::::::::::::::::::::::::::::::::::::::::::::::::#
 
-# fig , axes = plt.subplots(1,1, figsize=(9.2, 5.6)) # figsize is w x h in inch of figure
-# fig.subplots_adjust(left = 0.17, right = 0.81, bottom = 0.18, top = 0.95) # adjust the box of axes regarding the figure size
+## Special meshgrid for 2D plot :::::::::::::::::::::::::::::::::::::::::::::::#
 
-# for tick in axes.xaxis.get_major_ticks():
-#     tick.set_pad(7)
-# for tick in axes.yaxis.get_major_ticks():
-#     tick.set_pad(8)
-
-# #///// Plot /////#
-
-# Enks_up, Enks_ndiag_up, Vnks_up, dHks_dkx_up, dHks_dky_up = bands_func.diag_func(kx, np.zeros(1), la, s = 1, B = B, ts = ts_up)[0:-1]
-# Omega_nks_up = bands_func.berry_phase(Enks_up, Vnks_up, dHks_dkx_up, dHks_dky_up)
-
-# line = axes.plot(kx / pi, Omega_nks_up[:,0, 0])
-# plt.setp(line, ls = "-", c = '#FF0000', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
-# line = axes.plot(kx / pi, Omega_nks_up[:,0, 1])
-# plt.setp(line, ls = "-", c = '#00E054', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#00E054', mew = 2.5)
-# line = axes.plot(kx / pi, Omega_nks_up[:,0, 2])
-# plt.setp(line, ls = "-", c = '#7D44FF', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#7D44FF', mew = 2.5)
-
-# # Enks_dn, Enks_ndiag_dn, Vnks_dn, dHks_dkx_dn, dHks_dky_dn = bands_func.diag_func(kx, np.zeros(1), la, s = -1, B = B, ts = ts_dn)[0:-1]
-# # Omega_nks_dn = bands_func.berry_phase(Enks_dn, Vnks_dn, dHks_dkx_dn, dHks_dky_dn)
-
-# # line = axes.plot(kx / pi, Omega_nks_dn[:,0, 0])
-# # plt.setp(line, ls = "--", c = '#FF0000', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
-# # line = axes.plot(kx / pi, Omega_nks_dn[:,0, 1])
-# # plt.setp(line, ls = "--", c = '#00E054', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#00E054', mew = 2.5)
-# # line = axes.plot(kx / pi, Omega_nks_dn[:,0, 2])
-# # plt.setp(line, ls = "--", c = '#7D44FF', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#7D44FF', mew = 2.5)
-
-# axes.set_xlim(0, 2/3)
-# axes.locator_params(axis = 'x', nbins = 6)
-# axes.locator_params(axis = 'y', nbins = 6)
-# axes.set_xlabel(r"$k_{\rm x}$", labelpad = 8)
-# axes.set_ylabel(r"$\Omega$", labelpad = 8)
+kxx_p, kyy_p = np.meshgrid(kx, np.zeros(1), indexing = 'ij')
 
 
 
-# ## Energy vs kx ky = 0:::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+## Berry phase vs kx ky = 0 :::::::::::::::::::::::::::::::::::::::::::::::::::#
 
-# fig , axes = plt.subplots(1,1, figsize=(9.2, 5.6)) # figsize is w x h in inch of figure
-# fig.subplots_adjust(left = 0.17, right = 0.81, bottom = 0.18, top = 0.95) # adjust the box of axes regarding the figure size
+fig , axes = plt.subplots(1,1, figsize=(9.2, 5.6)) # figsize is w x h in inch of figure
+fig.subplots_adjust(left = 0.17, right = 0.81, bottom = 0.18, top = 0.95) # adjust the box of axes regarding the figure size
 
-# for tick in axes.xaxis.get_major_ticks():
-#     tick.set_pad(7)
-# for tick in axes.yaxis.get_major_ticks():
-#     tick.set_pad(8)
+for tick in axes.xaxis.get_major_ticks():
+    tick.set_pad(7)
+for tick in axes.yaxis.get_major_ticks():
+    tick.set_pad(8)
 
-# #///// Plot /////#
+#///// Plot /////#
 
-# Enks_up = bands_func.diag_func(kx, np.zeros(1), la, s = 1, B = B, ts = ts_up)[0]
+Enks_up, Enks_ndiag_up, Vnks_up, dHks_dkx_up, dHks_dky_up = bands_func.diag_func(kxx_p, kyy_p, la, s = 1, B = B, ts = ts_up)[0:-1]
+Omega_nks_up = bands_func.berry_phase(Enks_up, Vnks_up, dHks_dkx_up, dHks_dky_up)
 
-# line = axes.plot(kx / pi, Enks_up[:,0, 0])
-# plt.setp(line, ls = "-", c = '#FF0000', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
-# line = axes.plot(kx / pi, Enks_up[:,0, 1])
-# plt.setp(line, ls = "-", c = '#00E054', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#00E054', mew = 2.5)
-# line = axes.plot(kx / pi, Enks_up[:,0, 2])
-# plt.setp(line, ls = "-", c = '#7D44FF', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#7D44FF', mew = 2.5)
+line = axes.plot(kxx_p / pi, Omega_nks_up[:,0, 0])
+plt.setp(line, ls = "-", c = '#FF0000', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
+line = axes.plot(kxx_p / pi, Omega_nks_up[:,0, 1])
+plt.setp(line, ls = "-", c = '#00E054', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#00E054', mew = 2.5)
+line = axes.plot(kxx_p / pi, Omega_nks_up[:,0, 2])
+plt.setp(line, ls = "-", c = '#7D44FF', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#7D44FF', mew = 2.5)
 
-# Enks_dn = bands_func.diag_func(kx, np.zeros(1), la, s = -1, B = B, ts = ts_dn)[0]
+# Enks_dn, Enks_ndiag_dn, Vnks_dn, dHks_dkx_dn, dHks_dky_dn = bands_func.diag_func(kxx_p, kyy_p, la, s = -1, B = B, ts = ts_dn)[0:-1]
+# Omega_nks_dn = bands_func.berry_phase(Enks_dn, Vnks_dn, dHks_dkx_dn, dHks_dky_dn)
 
-# line = axes.plot(kx / pi, Enks_dn[:,0, 0])
+# line = axes.plot(kxx_p / pi, Omega_nks_dn[:,0, 0])
 # plt.setp(line, ls = "--", c = '#FF0000', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
-# line = axes.plot(kx / pi, Enks_dn[:,0, 1])
+# line = axes.plot(kxx_p / pi, Omega_nks_dn[:,0, 1])
 # plt.setp(line, ls = "--", c = '#00E054', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#00E054', mew = 2.5)
-# line = axes.plot(kx / pi, Enks_dn[:,0, 2])
+# line = axes.plot(kxx_p / pi, Omega_nks_dn[:,0, 2])
 # plt.setp(line, ls = "--", c = '#7D44FF', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#7D44FF', mew = 2.5)
 
-# axes.set_xlim(0, 2/3)
-# axes.locator_params(axis = 'x', nbins = 6)
-# axes.locator_params(axis = 'y', nbins = 6)
-# axes.set_xlabel(r"$k_{\rm x} / \pi$", labelpad = 8)
-# axes.set_ylabel(r"$E$", labelpad = 8)
+axes.set_xlim(0, 2/3)
+axes.locator_params(axis = 'x', nbins = 6)
+axes.locator_params(axis = 'y', nbins = 6)
+axes.set_xlabel(r"$k_{\rm x}$", labelpad = 8)
+axes.set_ylabel(r"$\Omega$", labelpad = 8)
+
+
+
+## Energy vs kx ky = 0:::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+
+fig , axes = plt.subplots(1,1, figsize=(9.2, 5.6)) # figsize is w x h in inch of figure
+fig.subplots_adjust(left = 0.17, right = 0.81, bottom = 0.18, top = 0.95) # adjust the box of axes regarding the figure size
+
+for tick in axes.xaxis.get_major_ticks():
+    tick.set_pad(7)
+for tick in axes.yaxis.get_major_ticks():
+    tick.set_pad(8)
+
+#///// Plot /////#
+
+
+
+Enks_up = bands_func.diag_func(kxx_p, kyy_p, la, s = 1, B = B, ts = ts_up)[0]
+
+line = axes.plot(kxx_p / pi, Enks_up[:,0, 0])
+plt.setp(line, ls = "-", c = '#FF0000', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
+line = axes.plot(kxx_p / pi, Enks_up[:,0, 1])
+plt.setp(line, ls = "-", c = '#00E054', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#00E054', mew = 2.5)
+line = axes.plot(kxx_p / pi, Enks_up[:,0, 2])
+plt.setp(line, ls = "-", c = '#7D44FF', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#7D44FF', mew = 2.5)
+
+Enks_dn = bands_func.diag_func(kxx_p, kyy_p, la, s = -1, B = B, ts = ts_dn)[0]
+
+line = axes.plot(kxx_p / pi, Enks_dn[:,0, 0])
+plt.setp(line, ls = "--", c = '#FF0000', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
+line = axes.plot(kxx_p / pi, Enks_dn[:,0, 1])
+plt.setp(line, ls = "--", c = '#00E054', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#00E054', mew = 2.5)
+line = axes.plot(kxx_p / pi, Enks_dn[:,0, 2])
+plt.setp(line, ls = "--", c = '#7D44FF', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#7D44FF', mew = 2.5)
+
+axes.set_xlim(0, 2/3)
+axes.locator_params(axis = 'x', nbins = 6)
+axes.locator_params(axis = 'y', nbins = 6)
+axes.set_xlabel(r"$k_{\rm x} / \pi$", labelpad = 8)
+axes.set_ylabel(r"$E$", labelpad = 8)
 
 
 
@@ -219,9 +228,8 @@ axes.set_ylabel(r"$S$", labelpad = 8)
 # fig = plt.figure(figsize=(9.2, 5.6))
 # axes = fig.add_subplot(111, projection='3d')
 
-# Enks_up = bands_func.diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)[0]
-# Enks_dn = bands_func.diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)[0]
-# kxx, kyy = np.meshgrid(kx, ky, indexing = 'ij')
+# Enks_up = bands_func.diag_func(kxx, kyy, la, s = 1, B = B, ts = ts_up)[0]
+# Enks_dn = bands_func.diag_func(kxx, kyy, la, s = -1, B = B, ts = ts_dn)[0]
 
 # axes.plot_surface(kxx / pi, kyy / pi, Enks_up[:, :, 0], rstride=1, cstride=1, alpha=1, color = "#FF0000")
 # axes.plot_surface(kxx / pi, kyy / pi, Enks_up[:, :, 1], rstride=1, cstride=1, alpha=1, color = "#00E054")

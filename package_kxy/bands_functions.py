@@ -27,8 +27,8 @@ def hamiltonian(kx, ky, la, s, B, ts):
 
     tsc = np.conj(ts)
 
-    len_kx = np.shape(kx)[0]
-    len_ky = np.shape(ky)[1]
+    len_kx = kx.shape[0]
+    len_ky = ky.shape[1]
 
     diagonal = (la - s * B) * np.ones((len_kx, len_ky))
 
@@ -36,7 +36,7 @@ def hamiltonian(kx, ky, la, s, B, ts):
                     [tsc * c1, diagonal, ts * c2 ],
                     [ts * c3 , tsc * c2, diagonal]]) # shape (3, 3, len_kx, len_ky)
 
-    ## Move axis
+    ## Move axis for diagonalization
     Hks = np.moveaxis(Hks, [-2, -1], [0, 1]) # shape (len_kx, len_ky, 3, 3)
 
     return Hks
@@ -56,8 +56,8 @@ def derivative_kx_hamiltonian(kx, ky, la, s, B, ts):
 
     tsc = np.conj(ts)
 
-    len_kx = np.shape(kx)[0]
-    len_ky = np.shape(ky)[1]
+    len_kx = kx.shape[0]
+    len_ky = ky.shape[1]
 
     diagonal = np.zeros((len_kx, len_ky))
 
@@ -85,8 +85,8 @@ def derivative_ky_hamiltonian(kx, ky, la, s, B, ts):
 
     tsc = np.conj(ts)
 
-    len_kx = np.shape(kx)[0]
-    len_ky = np.shape(ky)[1]
+    len_kx = kx.shape[0]
+    len_ky = ky.shape[1]
 
     diagonal = np.zeros((len_kx, len_ky))
 
@@ -105,6 +105,11 @@ def derivative_ky_hamiltonian(kx, ky, la, s, B, ts):
 def diag_func(kx, ky, la, s, B, ts):
 
     """
+    Returns:
+    Enks.shape = (i, j, n)
+    Enks_non_diag.shape = (i, j, n)
+    Vnks_diag.shape = (i, j, l, n)
+
     (i,j) -> (kx, ky)
     n -> different eigenvalues E[n]
     l -> different components of eigenvectors V[:, n]
@@ -114,7 +119,7 @@ def diag_func(kx, ky, la, s, B, ts):
     dHks_dkx = derivative_kx_hamiltonian(kx, ky, la, s, B, ts)
     dHks_dky = derivative_ky_hamiltonian(kx, ky, la, s, B, ts)
 
-    Enks, Vnks = np.linalg.eigh(Hks)
+    Enks, Vnks = np.linalg.eigh(Hks) # does always diagonalizaton on the two last axis
     # The column V[:, n] is the normalized eigenvector corresponding to the eigenvalue E[n]
 
     # Eigen values of non-diagonal part of the hamiltonian
@@ -143,7 +148,7 @@ def n_B(x):
     index_pos = x > 0
     index_neg = x <= 0
 
-    nB = np.zeros(np.shape(x))
+    nB = np.zeros(x.shape)
 
     nB[index_pos] = 1 / (exp(x[index_pos]) - 1)
     nB[index_neg] = 0
@@ -155,7 +160,7 @@ def n_B(x):
 ## Compute S = sum(Enks/kB*T)
 def compute_S(Enks_up, Enks_dn, T):
 
-    Nt = np.shape(Enks_up)[0] * np.shape(Enks_up)[1]
+    Nt = Enks_up.shape[0] * Enks_up.shape[1]
 
     sum_s_up = np.sum(n_B(Enks_up[:,:,0] / (kB * T))) + np.sum(n_B(Enks_up[:,:,1] / (kB * T))) + np.sum(n_B(Enks_up[:,:,2] / (kB * T)))
     sum_s_dn = np.sum(n_B(Enks_dn[:,:,0] / (kB * T))) + np.sum(n_B(Enks_dn[:,:,1] / (kB * T))) + np.sum(n_B(Enks_dn[:,:,2] / (kB * T)))
@@ -166,7 +171,7 @@ def compute_S(Enks_up, Enks_dn, T):
 
 def compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T):
 
-    Nt = np.shape(Enks_up)[0] * np.shape(Enks_up)[1]
+    Nt = Enks_up.shape[0] * Enks_up.shape[1]
 
     sum_s_up = np.sum(Enks_ndiag_up[:,:,0] * n_B(Enks_up[:,:,0] / (kB * T))) \
              + np.sum(Enks_ndiag_up[:,:,1] * n_B(Enks_up[:,:,1] / (kB * T))) \
@@ -186,7 +191,6 @@ def compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T)
 
 ## Fit function
 def residual_S_chi(pars, kx, ky, B, J, D, T):
-
 
     la = pars[0]
     chi_up = pars[1]
@@ -219,7 +223,6 @@ def residual_S_chi(pars, kx, ky, B, J, D, T):
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
 ## Berry phase
-
 def berry_phase(Enks, Vnks, dHks_dkx, dHks_dky):
 
     """
@@ -228,8 +231,8 @@ def berry_phase(Enks, Vnks, dHks_dkx, dHks_dky):
     l -> different components of eigenvectors V[:, n]
     """
 
-    len_kx = np.shape(Enks)[0]
-    len_ky = np.shape(Enks)[1]
+    len_kx = Enks.shape[0]
+    len_ky = Enks.shape[1]
 
     dVnks_dkx = np.zeros((len_kx, len_ky, 3, 3), dtype = complex) # # dim: i, j, l, n
     dVnks_dky = np.zeros((len_kx, len_ky, 3, 3), dtype = complex) # # dim: i, j, l, n
