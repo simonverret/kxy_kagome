@@ -2,8 +2,9 @@
 
 ## Modules <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<#
 import numpy as np
-from numpy import cos, sin, pi, sqrt, exp
+from numpy import cos, sin, pi, sqrt, exp, log
 from numpy.linalg import multi_dot
+from mpmath import polylog
 np.set_printoptions(6,suppress=True,sign="+",floatmode="fixed")
 ##>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
 
@@ -11,6 +12,7 @@ np.set_printoptions(6,suppress=True,sign="+",floatmode="fixed")
 # hbar = 1.05457173e-34 # J.s
 # e = 1.60217657e-19 # coulombs
 # kB = 1.380648e-23 # J / K
+hbar = 1
 kB = 1
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
@@ -226,9 +228,11 @@ def residual_S_chi(pars, kx, ky, B, J, D, T):
 def berry_phase(Enks, Vnks, dHks_dkx, dHks_dky):
 
     """
+    Returns:
+    Omega_nks.shape = (i, j, n)
+
     (i,j) -> (kx, ky)
     n -> different eigenvalues E[n]
-    l -> different components of eigenvectors V[:, n]
     """
 
     len_kx = Enks.shape[0]
@@ -261,5 +265,49 @@ def berry_phase(Enks, Vnks, dHks_dkx, dHks_dky):
                 Omega_nks[i,j,2] = 2 * np.real( 1j * np.dot(np.conj(dVnks_dkx[i,j,:,2]),dVnks_dky[i,j,:,2]))
 
     return Omega_nks
+
+## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+
+def c2_func(x):
+    c2 = ( 1 + x ) * ( log ( (1 + x) / x ) )**2 - ( log(x) )**2 - 2 * polylog(2, -x)
+    return float(c2)
+
+## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+
+## Kxy function
+def kxy_func(Enks_up, Enks_dn, Omega_nks_up, Omega_nks_dn, T):
+
+    """
+    Returns:
+    Omega_nks.shape = (i, j, n)
+
+    (i,j) -> (kx, ky)
+    n -> different eigenvalues E[n]
+    """
+
+    len_kx = Enks_up.shape[0]
+    len_ky = Enks_up.shape[1]
+
+    Nt = len_kx * len_ky
+
+    coeff_up = np.empty((len_kx, len_ky, 3), dtype = float) # dim: i, j, n
+    coeff_dn = np.empty((len_kx, len_ky, 3), dtype = float) # dim: i, j, n
+
+    for i in range(len_kx):
+        for j in range(len_ky):
+
+            coeff_up[i, j, 0] = ( c2_func( n_B( Enks_up[i, j, 0] / (kB * T) ) ) - pi**2 / 3 ) * Omega_nks_up[i, j, 0]
+            coeff_up[i, j, 1] = ( c2_func( n_B( Enks_up[i, j, 1] / (kB * T) ) ) - pi**2 / 3 ) * Omega_nks_up[i, j, 1]
+            coeff_up[i, j, 2] = ( c2_func( n_B( Enks_up[i, j, 2] / (kB * T) ) ) - pi**2 / 3 ) * Omega_nks_up[i, j, 2]
+
+            coeff_dn[i, j, 0] = ( c2_func( n_B( Enks_dn[i, j, 0] / (kB * T) ) ) - pi**2 / 3 ) * Omega_nks_dn[i, j, 0]
+            coeff_dn[i, j, 1] = ( c2_func( n_B( Enks_dn[i, j, 1] / (kB * T) ) ) - pi**2 / 3 ) * Omega_nks_dn[i, j, 1]
+            coeff_dn[i, j, 2] = ( c2_func( n_B( Enks_dn[i, j, 2] / (kB * T) ) ) - pi**2 / 3 ) * Omega_nks_dn[i, j, 2]
+
+    kxy = - ( kB**2 * T ) / (hbar * Nt ) * \
+            ( np.sum(coeff_up[:,:,0] + coeff_up[:,:,1] + coeff_up[:,:,2]) \
+            + np.sum(coeff_dn[:,:,0] + coeff_dn[:,:,1] + coeff_dn[:,:,2]) )
+
+    return kxy
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
