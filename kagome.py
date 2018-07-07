@@ -13,10 +13,10 @@ eta2 =  np.array([1,0])
 eta3 =  np.array([-1,np.sqrt(3)])/2
 
 J=1
-D=0.1
+D=0.2
 B=0.01
-T=0.
-res = 10
+T=1
+res = 33
 resX = res+1
 
 initLamda = +3.4284
@@ -74,6 +74,7 @@ def selfConsistCond(varSet):
     tUp = hopping( 1,chiUp,chiDn)
     tDn = hopping(-1,chiDn,chiUp)
     bandsUp = eighOnMesh( 1,lamda,tUp)[0]
+    print(np.shape(bandsUp))
     bandsDn = eighOnMesh(-1,lamda,tDn)[0]
 
     # Doki et al., Universal..., 2018, sup. mat. Eq.(S6a)
@@ -148,7 +149,7 @@ def berryPhaseOnMeshBkp(bands,eigVecs,dhdkx,dhdky):
     for i in range(len(KX)):
         for j in range(len(KX)):
             dHdkx = dhdkx[i,j,:,:]
-            dHdky = dhdky[i,j,:,:]            
+            dHdky = dhdky[i,j,:,:]
             for n in range(DIM):
                 ketn = eigVecs[i,j,:,n]
                 bran = np.conj(ketn)
