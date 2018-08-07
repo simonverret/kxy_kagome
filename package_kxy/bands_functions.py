@@ -16,7 +16,7 @@ hbar = 1
 kB = 1
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
-## Full Hamiltonian
+## Hamiltonian
 def hamiltonian(kx, ky, la, s, B, ts):
 
     k1 = 1/2 * (-1 * kx - sqrt(3) * ky)
@@ -107,6 +107,9 @@ def derivative_ky_hamiltonian(kx, ky, la, s, B, ts):
 def diag_func(kx, ky, la, s, B, ts):
 
     """
+    Input:
+    kx and kxy must be meshgrid matrix
+
     Returns:
     Enks.shape = (i, j, n)
     Enks_non_diag.shape = (i, j, n)
@@ -131,6 +134,36 @@ def diag_func(kx, ky, la, s, B, ts):
     la_min = s * B - np.min(Enks_ndiag)
 
     return Enks, Enks_ndiag, Vnks, dHks_dkx, dHks_dky, la_min
+
+## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+
+## Diaganolization function
+def diag_for_chi_func(kx, ky):
+
+    """
+    Returns:
+    fnk.shape = (i, j, n)
+
+    (i,j) -> (kx, ky)
+    n -> different eigenvalues E[n]
+    l -> different components of eigenvectors V[:, n]
+    """
+
+    len_kx = kx.shape[0]
+    len_ky = ky.shape[1]
+
+    Hks_ndiag_t_1 = hamiltonian(kx, ky, la = 0, s = 0, B = 0, ts = 1)
+    Hks_ndiag_t_j = hamiltonian(kx, ky, la = 0, s = 0, B = 0, ts = 1j)
+
+    fnk_t_1, Vnks_t_1 = np.linalg.eigh(Hks_ndiag_t_1)
+    fnk_t_j, Vnks_t_j = np.linalg.eigh(Hks_ndiag_t_j)
+
+    fnk_tot = np.empty((len_kx, len_ky, 3))
+    fnk_tot[:, :, 0] = fnk_t_1[:, :, 0] + fnk_t_j[:, :, 0]
+    fnk_tot[:, :, 1] = fnk_t_1[:, :, 1] + fnk_t_j[:, :, 1]
+    fnk_tot[:, :, 2] = fnk_t_1[:, :, 2] + fnk_t_j[:, :, 2]
+
+    return fnk_tot
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
@@ -167,24 +200,24 @@ def compute_S(Enks_up, Enks_dn, T):
     sum_s_up = np.sum(n_B(Enks_up[:,:,0] / (kB * T))) + np.sum(n_B(Enks_up[:,:,1] / (kB * T))) + np.sum(n_B(Enks_up[:,:,2] / (kB * T)))
     sum_s_dn = np.sum(n_B(Enks_dn[:,:,0] / (kB * T))) + np.sum(n_B(Enks_dn[:,:,1] / (kB * T))) + np.sum(n_B(Enks_dn[:,:,2] / (kB * T)))
 
-    S = (sum_s_up + sum_s_dn) / Nt / 2
+    S = (sum_s_up + sum_s_dn) / Nt / 6
 
     return S
 
-def compute_chi(Enks_up, Enks_dn, Enks_ndiag_up, Enks_ndiag_dn, ts_up, ts_dn, T):
+def compute_chi(Enks_up, Enks_dn, fnk_tot, ts_up, ts_dn, T):
 
     Nt = Enks_up.shape[0] * Enks_up.shape[1]
 
-    sum_s_up = np.sum(Enks_ndiag_up[:,:,0] * n_B(Enks_up[:,:,0] / (kB * T))) \
-             + np.sum(Enks_ndiag_up[:,:,1] * n_B(Enks_up[:,:,1] / (kB * T))) \
-             + np.sum(Enks_ndiag_up[:,:,2] * n_B(Enks_up[:,:,2] / (kB * T)))
+    sum_s_up = np.sum(fnk_tot[:,:,0] * n_B(Enks_up[:,:,0] / (kB * T))) \
+             + np.sum(fnk_tot[:,:,1] * n_B(Enks_up[:,:,1] / (kB * T))) \
+             + np.sum(fnk_tot[:,:,2] * n_B(Enks_up[:,:,2] / (kB * T)))
 
-    sum_s_dn = np.sum(Enks_ndiag_dn[:,:,0] * n_B(Enks_dn[:,:,0] / (kB * T))) \
-             + np.sum(Enks_ndiag_dn[:,:,1] * n_B(Enks_dn[:,:,1] / (kB * T))) \
-             + np.sum(Enks_ndiag_dn[:,:,2] * n_B(Enks_dn[:,:,2] / (kB * T)))
+    sum_s_dn = np.sum(fnk_tot[:,:,0] * n_B(Enks_dn[:,:,0] / (kB * T))) \
+             + np.sum(fnk_tot[:,:,1] * n_B(Enks_dn[:,:,1] / (kB * T))) \
+             + np.sum(fnk_tot[:,:,2] * n_B(Enks_dn[:,:,2] / (kB * T)))
 
-    chi_up = sum_s_up / Nt / np.absolute(ts_up)
-    chi_dn = sum_s_dn / Nt / np.absolute(ts_dn)
+    chi_up = sum_s_up / Nt / 6
+    chi_dn = sum_s_dn / Nt / 6
 
     return (chi_up, chi_dn)
 
@@ -205,11 +238,14 @@ def residual_S_chi(pars, kx, ky, B, J, D, T):
     ts_dn = compute_ts(chi_up, chi_dn, J, D, -1)
 
     # Compute eigenvalues
-    Enks_up_new, Enks_ndiag_up_new = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)[0:2]
-    Enks_dn_new, Enks_ndiag_dn_new = diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)[0:2]
+    Enks_up_new = diag_func(kx, ky, la, s = 1, B = B, ts = ts_up)[0]
+    Enks_dn_new = diag_func(kx, ky, la, s = -1, B = B, ts = ts_dn)[0]
+
+    # Compute fnk_tot
+    fnk_tot = diag_for_chi_func(kx, ky)
 
     # Compute residual_Chi
-    (chi_up_new, chi_dn_new) = compute_chi(Enks_up_new, Enks_dn_new, Enks_ndiag_up_new, Enks_ndiag_dn_new, ts_up, ts_dn, T)
+    (chi_up_new, chi_dn_new) = compute_chi(Enks_up_new, Enks_dn_new, fnk_tot, ts_up, ts_dn, T)
     residual_chi_up = (chi_up - chi_up_new)
     residual_chi_dn = (chi_dn - chi_dn_new)
 
