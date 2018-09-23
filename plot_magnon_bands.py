@@ -35,7 +35,7 @@ ts_dn = 1.137 + 0.35666j
 
 la = 2.2
 
-resolution_k = 50
+resolution_k = 100
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
@@ -46,11 +46,11 @@ kxx, kyy = np.meshgrid(kx, ky, indexing = 'ij')
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
-Enks_up, Enks_ndiag_up, Vnks_up, dHks_dkx_up, dHks_dky_up = bands_func.diag_func(kxx, kyy, la, s = 1, B = B, ts = ts_up)[0:-1]
-Enks_dn, Enks_ndiag_dn, Vnks_dn, dHks_dkx_dn, dHks_dky_dn = bands_func.diag_func(kxx, kyy, la, s = -1, B = B, ts = ts_dn)[0:-1]
+# Enks_up, Enks_ndiag_up, Vnks_up, dHks_dkx_up, dHks_dky_up = bands_func.diag_func(kxx, kyy, la, s = 1, B = B, ts = ts_up)[0:-1]
+# Enks_dn, Enks_ndiag_dn, Vnks_dn, dHks_dkx_dn, dHks_dky_dn = bands_func.diag_func(kxx, kyy, la, s = -1, B = B, ts = ts_dn)[0:-1]
 
-Omega_nks_up = bands_func.berry_phase(Enks_up, Vnks_up, dHks_dkx_up, dHks_dky_up)
-Omega_nks_dn = bands_func.berry_phase(Enks_dn, Vnks_dn, dHks_dkx_dn, dHks_dky_dn)
+# Omega_nks_up = bands_func.berry_phase(Enks_up, Vnks_up, dHks_dkx_up, dHks_dky_up)
+# Omega_nks_dn = bands_func.berry_phase(Enks_dn, Vnks_dn, dHks_dkx_dn, dHks_dky_dn)
 
 # kxy = bands_func.kxy_func(Enks_up, Enks_dn, Omega_nks_up, Omega_nks_dn, T)
 
@@ -88,37 +88,37 @@ Enks_dn_p, Enks_ndiag_dn_p, Vnks_dn_p, dHks_dkx_dn_p, dHks_dky_dn_p = bands_func
 Omega_nks_up_p = bands_func.berry_phase(Enks_up_p, Vnks_up_p, dHks_dkx_up_p, dHks_dky_up_p)
 Omega_nks_dn_p = bands_func.berry_phase(Enks_dn_p, Vnks_dn_p, dHks_dkx_dn_p, dHks_dky_dn_p)
 
-## Berry phase vs kx ky = 0 :::::::::::::::::::::::::::::::::::::::::::::::::::#
+# ## Berry phase vs kx ky = 0 :::::::::::::::::::::::::::::::::::::::::::::::::::#
 
-fig , axes = plt.subplots(1,1, figsize=(9.2, 5.6)) # figsize is w x h in inch of figure
-fig.subplots_adjust(left = 0.17, right = 0.81, bottom = 0.18, top = 0.95) # adjust the box of axes regarding the figure size
+# fig , axes = plt.subplots(1,1, figsize=(9.2, 5.6)) # figsize is w x h in inch of figure
+# fig.subplots_adjust(left = 0.17, right = 0.81, bottom = 0.18, top = 0.95) # adjust the box of axes regarding the figure size
 
-for tick in axes.xaxis.get_major_ticks():
-    tick.set_pad(7)
-for tick in axes.yaxis.get_major_ticks():
-    tick.set_pad(8)
+# for tick in axes.xaxis.get_major_ticks():
+#     tick.set_pad(7)
+# for tick in axes.yaxis.get_major_ticks():
+#     tick.set_pad(8)
 
-#///// Plot /////#
+# #///// Plot /////#
 
-line = axes.plot(kxx_p / pi, Omega_nks_up_p[:,0, 0])
-plt.setp(line, ls = "-", c = '#FF0000', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
-line = axes.plot(kxx_p / pi, Omega_nks_up_p[:,0, 1])
-plt.setp(line, ls = "-", c = '#00E054', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#00E054', mew = 2.5)
-line = axes.plot(kxx_p / pi, Omega_nks_up_p[:,0, 2])
-plt.setp(line, ls = "-", c = '#7D44FF', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#7D44FF', mew = 2.5)
+# line = axes.plot(kxx_p / pi, Omega_nks_up_p[:,0, 0])
+# plt.setp(line, ls = "-", c = '#FF0000', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
+# line = axes.plot(kxx_p / pi, Omega_nks_up_p[:,0, 1])
+# plt.setp(line, ls = "-", c = '#00E054', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#00E054', mew = 2.5)
+# line = axes.plot(kxx_p / pi, Omega_nks_up_p[:,0, 2])
+# plt.setp(line, ls = "-", c = '#7D44FF', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#7D44FF', mew = 2.5)
 
-# line = axes.plot(kxx_p / pi, Omega_nks_dn_p[:,0, 0])
-# plt.setp(line, ls = "--", c = '#FF0000', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
-# line = axes.plot(kxx_p / pi, Omega_nks_dn_p[:,0, 1])
-# plt.setp(line, ls = "--", c = '#00E054', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#00E054', mew = 2.5)
-# line = axes.plot(kxx_p / pi, Omega_nks_dn_p[:,0, 2])
-# plt.setp(line, ls = "--", c = '#7D44FF', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#7D44FF', mew = 2.5)
+# # line = axes.plot(kxx_p / pi, Omega_nks_dn_p[:,0, 0])
+# # plt.setp(line, ls = "--", c = '#FF0000', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
+# # line = axes.plot(kxx_p / pi, Omega_nks_dn_p[:,0, 1])
+# # plt.setp(line, ls = "--", c = '#00E054', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#00E054', mew = 2.5)
+# # line = axes.plot(kxx_p / pi, Omega_nks_dn_p[:,0, 2])
+# # plt.setp(line, ls = "--", c = '#7D44FF', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#7D44FF', mew = 2.5)
 
-axes.set_xlim(0, 2/3)
-axes.locator_params(axis = 'x', nbins = 6)
-axes.locator_params(axis = 'y', nbins = 6)
-axes.set_xlabel(r"$k_{\rm x}$", labelpad = 8)
-axes.set_ylabel(r"$\Omega$", labelpad = 8)
+# axes.set_xlim(0, 2/3)
+# axes.locator_params(axis = 'x', nbins = 6)
+# axes.locator_params(axis = 'y', nbins = 6)
+# axes.set_xlabel(r"$k_{\rm x}$", labelpad = 8)
+# axes.set_ylabel(r"$\Omega$", labelpad = 8)
 
 
 

@@ -4,8 +4,8 @@
 import numpy as np
 from numpy import cos, sin, pi, sqrt, exp, log
 from numpy.linalg import multi_dot
-from mpmath import polylog
 np.set_printoptions(6,suppress=True,sign="+",floatmode="fixed")
+import time
 ##>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
 
 ## Universal Constant :::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
@@ -303,10 +303,28 @@ def berry_phase(Enks, Vnks, dHks_dkx, dHks_dky):
     return Omega_nks
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+def polylog2(x):
+    kk = np.arange(1, 1000, 1)
 
+    try:
+        Li2 = np.zeros(x.shape)
+    except:
+        Li2 = 0
+
+    for k in kk:
+        Li2 += x**k / k**2
+    return Li2
+
+
+# start_time_FS = time.time()
+# a = np.ones((2,2))
+# print(polylog2(a))
+# print("Discretize FS time : %.6s seconds" % (time.time() - start_time_FS))
+
+## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 def c2_func(x):
-    c2 = ( 1 + x ) * ( log ( (1 + x) / x ) )**2 - ( log(x) )**2 - 2 * polylog(2, -x)
-    return float(c2)
+    c2 = ( 1 + x ) * ( log ( (1 + x) / x ) )**2 - ( log(x) )**2 - 2 * polylog2(-x)
+    return c2
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
@@ -329,16 +347,13 @@ def kxy_func(Enks_up, Enks_dn, Omega_nks_up, Omega_nks_dn, T):
     coeff_up = np.empty((len_kx, len_ky, 3), dtype = float) # dim: i, j, n
     coeff_dn = np.empty((len_kx, len_ky, 3), dtype = float) # dim: i, j, n
 
-    for i in range(len_kx):
-        for j in range(len_ky):
+    coeff_up[:, :, 0] = ( c2_func( n_B( Enks_up[:, :, 0] / (kB * T) ) ) - pi**2 / 3 ) * Omega_nks_up[:, :, 0]
+    coeff_up[:, :, 1] = ( c2_func( n_B( Enks_up[:, :, 1] / (kB * T) ) ) - pi**2 / 3 ) * Omega_nks_up[:, :, 1]
+    coeff_up[:, :, 2] = ( c2_func( n_B( Enks_up[:, :, 2] / (kB * T) ) ) - pi**2 / 3 ) * Omega_nks_up[:, :, 2]
 
-            coeff_up[i, j, 0] = ( c2_func( n_B( Enks_up[i, j, 0] / (kB * T) ) ) - pi**2 / 3 ) * Omega_nks_up[i, j, 0]
-            coeff_up[i, j, 1] = ( c2_func( n_B( Enks_up[i, j, 1] / (kB * T) ) ) - pi**2 / 3 ) * Omega_nks_up[i, j, 1]
-            coeff_up[i, j, 2] = ( c2_func( n_B( Enks_up[i, j, 2] / (kB * T) ) ) - pi**2 / 3 ) * Omega_nks_up[i, j, 2]
-
-            coeff_dn[i, j, 0] = ( c2_func( n_B( Enks_dn[i, j, 0] / (kB * T) ) ) - pi**2 / 3 ) * Omega_nks_dn[i, j, 0]
-            coeff_dn[i, j, 1] = ( c2_func( n_B( Enks_dn[i, j, 1] / (kB * T) ) ) - pi**2 / 3 ) * Omega_nks_dn[i, j, 1]
-            coeff_dn[i, j, 2] = ( c2_func( n_B( Enks_dn[i, j, 2] / (kB * T) ) ) - pi**2 / 3 ) * Omega_nks_dn[i, j, 2]
+    coeff_dn[:, :, 0] = ( c2_func( n_B( Enks_dn[:, :, 0] / (kB * T) ) ) - pi**2 / 3 ) * Omega_nks_dn[:, :, 0]
+    coeff_dn[:, :, 1] = ( c2_func( n_B( Enks_dn[:, :, 1] / (kB * T) ) ) - pi**2 / 3 ) * Omega_nks_dn[:, :, 1]
+    coeff_dn[:, :, 2] = ( c2_func( n_B( Enks_dn[:, :, 2] / (kB * T) ) ) - pi**2 / 3 ) * Omega_nks_dn[:, :, 2]
 
     kxy = - ( kB**2 * T ) / (hbar * Nt ) * \
             ( np.sum(coeff_up[:,:,0] + coeff_up[:,:,1] + coeff_up[:,:,2]) \
