@@ -4,8 +4,10 @@
 import numpy as np
 from numpy import cos, sin, pi, sqrt, exp, log
 from numpy.linalg import multi_dot
+from scipy.special import spence as dilog
 np.set_printoptions(6,suppress=True,sign="+",floatmode="fixed")
 import time
+# from numba import jit, prange
 ##>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
 
 ## Universal Constant :::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
@@ -302,28 +304,11 @@ def berry_phase(Enks, Vnks, dHks_dkx, dHks_dky):
 
     return Omega_nks
 
-## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
-def polylog2(x):
-    kk = np.arange(1, 1000, 1)
-
-    try:
-        Li2 = np.zeros(x.shape)
-    except:
-        Li2 = 0
-
-    for k in kk:
-        Li2 += x**k / k**2
-    return Li2
-
-
-# start_time_FS = time.time()
-# a = np.ones((2,2))
-# print(polylog2(a))
-# print("Discretize FS time : %.6s seconds" % (time.time() - start_time_FS))
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 def c2_func(x):
-    c2 = ( 1 + x ) * ( log ( (1 + x) / x ) )**2 - ( log(x) )**2 - 2 * polylog2(-x)
+    c2 = ( 1 + x ) * ( log ( (1 + x) / x ) )**2 - ( log(x) )**2 - 2 * dilog(1-(-x))
+    # dilog from scipy.special.spence is defined with a different convention where z = 1 - x
     return c2
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
@@ -360,5 +345,3 @@ def kxy_func(Enks_up, Enks_dn, Omega_nks_up, Omega_nks_dn, T):
             + np.sum(coeff_dn[:,:,0] + coeff_dn[:,:,1] + coeff_dn[:,:,2]) )
 
     return kxy
-
-## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
