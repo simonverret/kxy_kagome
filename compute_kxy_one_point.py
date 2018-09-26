@@ -25,15 +25,15 @@ kB = 1
 
 B = 0.01 # magnetic field in unit of energy g * muB * B
 
-T = 1
+T = 1.4
 
 J = 1
 D = 0.1 * J
 
-chi_up_ini = 1
-chi_dn_ini = 1
+chi_up =  -0.3517514278535367
+chi_dn =  -0.3384697556512993
 
-resolution_k = 100
+resolution_k = 500
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
@@ -47,14 +47,15 @@ kxx, kyy = np.meshgrid(kx, ky, indexing = 'ij')
 
 ## Initialize guessed values for root function ##
 
-ts_up_ini = bands_func.compute_ts(chi_up_ini, chi_dn_ini, J, D, 1)
-ts_dn_ini = bands_func.compute_ts(chi_up_ini, chi_dn_ini, J, D, -1)
+ts_up_ini = bands_func.compute_ts(chi_up, chi_dn, J, D, 1)
+ts_dn_ini = bands_func.compute_ts(chi_up, chi_dn, J, D, -1)
 
 la_min_up = bands_func.diag_func(kxx, kyy, la = 0, s = 1, B = B, ts = ts_up_ini)[-1]
 la_min_dn = bands_func.diag_func(kxx, kyy, la = 0, s = -1, B = B, ts = ts_dn_ini)[-1]
 
 la_min = np.max([la_min_up, la_min_dn]) # prevent from having negative eigen values in the root algorithm
 
+print(la_min)
 p_residual_S_chi = partial(bands_func.residual_S_chi, kx = kxx, ky = kyy, B = B, D = D, J = J, T = T)
 
 # In order to avoid the trivial value for (chi_up, chi_dn) = (0,0), we look for
@@ -62,10 +63,12 @@ p_residual_S_chi = partial(bands_func.residual_S_chi, kx = kxx, ky = kyy, B = B,
 # starting from chi_ini ~ 0 to higher values, as the non trivial roots are the second
 # roots to find before chi_function becomes discontinous:
 
-# chi_steps = np.arange(0.41, 5, 0.2)
+# chi_steps = np.arange(-5, 0, 0.05)[::-1]
 # for chi_ini in chi_steps:
 
-#         out = optimize.root(p_residual_S_chi, np.array([la_min, -chi_ini, -chi_ini]))
+#         print(chi_ini)
+
+#         out = optimize.root(p_residual_S_chi, np.array([la_min, chi_ini, chi_ini]))
 #         roots = out.x
 
 #         if np.all(np.abs(roots[1:]) < 1e-4) or (out.success is False) : # (chi_up, chi_dn) < 1e-4
@@ -73,8 +76,7 @@ p_residual_S_chi = partial(bands_func.residual_S_chi, kx = kxx, ky = kyy, B = B,
 #         else:
 #             break
 
-chi_ini = -0.5
-out = optimize.root(p_residual_S_chi, np.array([la_min, chi_ini, chi_ini]))
+out = optimize.root(p_residual_S_chi, np.array([la_min, chi_up, chi_dn]))
 roots = out.x
 print(roots)
 

@@ -233,7 +233,7 @@ def residual_S_chi(pars, kx, ky, B, J, D, T):
     chi_up = pars[1]
     chi_dn = pars[2]
 
-    print("[lambda, chi_up, chi_dn] =     ", np.array([la, chi_up, chi_dn]))
+    # print("[lambda, chi_up, chi_dn] =     ", np.array([la, chi_up, chi_dn]))
 
     # Compute ts_up & ts_dn
     ts_up = compute_ts(chi_up, chi_dn, J, D, 1)
@@ -254,7 +254,7 @@ def residual_S_chi(pars, kx, ky, B, J, D, T):
     # Compute residual_S
     residual_S = compute_S(Enks_up_new, Enks_dn_new, T) - 0.5
 
-    print("residual [S, chi_up, chi_dn] = ", np.array([residual_S, residual_chi_up, residual_chi_dn]))
+    # print("residual [S, chi_up, chi_dn] = ", np.array([residual_S, residual_chi_up, residual_chi_dn]))
 
 
     return (residual_S, residual_chi_up, residual_chi_dn)

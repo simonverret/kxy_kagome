@@ -23,7 +23,7 @@ kB = 1
 
 ## Variables ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
-B = 0.01 # magnetic field in unit of energy g * muB * B
+B = 0.05 # magnetic field in unit of energy g * muB * B
 
 T = 1
 
@@ -35,14 +35,14 @@ ts_dn = 1.137 + 0.35666j
 
 la = 2.2
 
-resolution_k = 100
+resolution_k = 1000
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
 # Contains the hexago volume in a rectangle of side pi x (2*pi/sqrt(3))
 kx = np.linspace(-pi / 3, 2 * pi / 3, resolution_k)
 ky = np.linspace(-pi / sqrt(3), pi / sqrt(3), resolution_k)
-kxx, kyy = np.meshgrid(kx, ky, indexing = 'ij')
+# kxx, kyy = np.meshgrid(kx, ky, indexing = 'ij')
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
