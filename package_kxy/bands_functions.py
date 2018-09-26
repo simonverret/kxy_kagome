@@ -6,7 +6,8 @@ from numpy import cos, sin, pi, sqrt, exp, log
 from numpy.linalg import multi_dot
 from scipy.special import spence as dilog
 np.set_printoptions(6,suppress=True,sign="+",floatmode="fixed")
-import time
+from functools import partial
+from scipy import optimize
 # from numba import jit, prange
 ##>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
 
@@ -314,7 +315,7 @@ def c2_func(x):
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
 ## Kxy function
-def kxy_func(Enks_up, Enks_dn, Omega_nks_up, Omega_nks_dn, T):
+def kxy_single_value(Enks_up, Enks_dn, Omega_nks_up, Omega_nks_dn, T):
 
     """
     Returns:
@@ -345,3 +346,49 @@ def kxy_func(Enks_up, Enks_dn, Omega_nks_up, Omega_nks_dn, T):
             + np.sum(coeff_dn[:,:,0] + coeff_dn[:,:,1] + coeff_dn[:,:,2]) )
 
     return kxy
+
+
+def kxy_algorithm(kxx, kyy, B, D, J, T, la_min, chi_up_ini, chi_dn_ini, steps_on_chi_ini = False):
+
+    p_residual_S_chi = partial(residual_S_chi, kx = kxx, ky = kyy, B = B, D = D, J = J, T = T)
+
+    if steps_on_chi_ini == True:
+        # In order to avoid the trivial value for (chi_up, chi_dn) = (0,0), we look for
+        # chi roots different from the trivial ones by trying different chi_ini values
+        # starting from chi_ini = 0 to higher values, as the non trivial roots are the second
+        # roots to find before chi_function becomes discontinous:
+
+        chi_steps = np.arange(-5, 0, 0.1)[::-1]
+        for i, chi_ini in enumerate(chi_steps):
+                print("Attent " + str(i) + ": chi_ini = " + str(chi_ini))
+                out = optimize.root(p_residual_S_chi, np.array([la_min, chi_ini, chi_ini]))
+                roots = out.x
+
+                if np.all(np.abs(roots[1:]) < 1e-4) or (out.success is False) : # (chi_up, chi_dn) < 1e-4
+                    continue
+                else:
+                    break
+
+    else:
+        out = optimize.root(p_residual_S_chi, np.array([la_min, chi_up_ini, chi_dn_ini]))
+        roots = out.x
+
+    la = roots[0]
+    chi_up = roots[1]
+    chi_dn = roots[2]
+
+    ## Compute bands from the right lambda, chi_up and chi_dn
+    ts_up = compute_ts(chi_up, chi_dn, J, D, 1)
+    ts_dn = compute_ts(chi_up, chi_dn, J, D, -1)
+    Enks_up, Enks_ndiag_up, Vnks_up, dHks_dkx_up, dHks_dky_up = diag_func(kxx, kyy, la, s = 1, B = B, ts = ts_up)[0:-1]
+    Enks_dn, Enks_ndiag_dn, Vnks_dn, dHks_dkx_dn, dHks_dky_dn = diag_func(kxx, kyy, la, s = -1, B = B, ts = ts_dn)[0:-1]
+    Omega_nks_up = berry_phase(Enks_up, Vnks_up, dHks_dkx_up, dHks_dky_up)
+    Omega_nks_dn = berry_phase(Enks_dn, Vnks_dn, dHks_dkx_dn, dHks_dky_dn)
+
+    ## Compute kxy from bands and Berry phase
+    kxy = kxy_single_value(Enks_up, Enks_dn, Omega_nks_up, Omega_nks_dn, T)
+
+    ## Display results
+    print("[T, la, chi_up, chi_dn, kxy] = ", np.array([T, la, chi_up, chi_dn, kxy]))
+
+    return kxy, la, chi_up, chi_dn, ts_up, ts_dn

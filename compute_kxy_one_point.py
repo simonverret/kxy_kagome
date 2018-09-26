@@ -10,8 +10,7 @@ from mpl_toolkits.mplot3d import axes3d
 from functools import partial
 from scipy import optimize
 from numpy.linalg import multi_dot
-
-import package_kxy.bands_functions as bands_func
+from package_kxy.bands_functions import *
 ##>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
 
 ## Universal Constant :::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
@@ -21,86 +20,37 @@ import package_kxy.bands_functions as bands_func
 # kB = 1.380648e-23 # J / K
 kB = 1
 
-## Variables ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
-
+## Parameters :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 B = 0.01 # magnetic field in unit of energy g * muB * B
-
-T = 1.4
-
 J = 1
 D = 0.1 * J
 
+resolution_k = 100
+
+# Initial parameters for root algorithm :::::::::::::::::::::::::::::::::::::::#
+T = 1.35
 chi_up =  -0.3517514278535367
 chi_dn =  -0.3384697556512993
 
-resolution_k = 500
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
-
 # Contains the hexago volume in a rectangle of side pi x (2*pi/sqrt(3))
 kx = np.linspace(-pi / 3, 2 * pi / 3, resolution_k)
 ky = np.linspace(-pi / sqrt(3), pi / sqrt(3), resolution_k)
 kxx, kyy = np.meshgrid(kx, ky, indexing = 'ij')
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
-
-
 ## Initialize guessed values for root function ##
 
-ts_up_ini = bands_func.compute_ts(chi_up, chi_dn, J, D, 1)
-ts_dn_ini = bands_func.compute_ts(chi_up, chi_dn, J, D, -1)
+ts_up_ini = compute_ts(chi_up, chi_dn, J, D, 1)
+ts_dn_ini = compute_ts(chi_up, chi_dn, J, D, -1)
 
-la_min_up = bands_func.diag_func(kxx, kyy, la = 0, s = 1, B = B, ts = ts_up_ini)[-1]
-la_min_dn = bands_func.diag_func(kxx, kyy, la = 0, s = -1, B = B, ts = ts_dn_ini)[-1]
+la_min_up = diag_func(kxx, kyy, la = 0, s = 1, B = B, ts = ts_up_ini)[-1]
+la_min_dn = diag_func(kxx, kyy, la = 0, s = -1, B = B, ts = ts_dn_ini)[-1]
 
 la_min = np.max([la_min_up, la_min_dn]) # prevent from having negative eigen values in the root algorithm
 
-print(la_min)
-p_residual_S_chi = partial(bands_func.residual_S_chi, kx = kxx, ky = kyy, B = B, D = D, J = J, T = T)
-
-# In order to avoid the trivial value for (chi_up, chi_dn) = (0,0), we look for
-# chi roots different from the trivial ones by trying different chi_ini values
-# starting from chi_ini ~ 0 to higher values, as the non trivial roots are the second
-# roots to find before chi_function becomes discontinous:
-
-# chi_steps = np.arange(-5, 0, 0.05)[::-1]
-# for chi_ini in chi_steps:
-
-#         print(chi_ini)
-
-#         out = optimize.root(p_residual_S_chi, np.array([la_min, chi_ini, chi_ini]))
-#         roots = out.x
-
-#         if np.all(np.abs(roots[1:]) < 1e-4) or (out.success is False) : # (chi_up, chi_dn) < 1e-4
-#             continue
-#         else:
-#             break
-
-out = optimize.root(p_residual_S_chi, np.array([la_min, chi_up, chi_dn]))
-roots = out.x
-print(roots)
-
-la = roots[0]
-chi_up = roots[1]
-chi_dn = roots[2]
-
-## Compute bands from the right lambda, chi_up and chi_dn >>>>>>>>>>>>>>>>>>>>>#
-ts_up = bands_func.compute_ts(chi_up, chi_dn, J, D, 1)
-ts_dn = bands_func.compute_ts(chi_up, chi_dn, J, D, -1)
-
-print("chi_up = ", chi_up)
-print("chi_dn = ", chi_dn)
-
-print("ts_up = ", ts_up)
-print("ts_dn = ", ts_dn)
-
-Enks_up, Enks_ndiag_up, Vnks_up, dHks_dkx_up, dHks_dky_up = bands_func.diag_func(kxx, kyy, la, s = 1, B = B, ts = ts_up)[0:-1]
-Enks_dn, Enks_ndiag_dn, Vnks_dn, dHks_dkx_dn, dHks_dky_dn = bands_func.diag_func(kxx, kyy, la, s = -1, B = B, ts = ts_dn)[0:-1]
-
-Omega_nks_up = bands_func.berry_phase(Enks_up, Vnks_up, dHks_dkx_up, dHks_dky_up)
-Omega_nks_dn = bands_func.berry_phase(Enks_dn, Vnks_dn, dHks_dkx_dn, dHks_dky_dn)
-
-kxy = bands_func.kxy_func(Enks_up, Enks_dn, Omega_nks_up, Omega_nks_dn, T)
+kxy, la, chi_up, chi_dn, ts_up, ts_dn = kxy_algorithm(kxx, kyy, B, D, J, T, la_min, chi_up, chi_dn, steps_on_chi_ini = True)
 
 print("kxy = " + str(kxy))
 
@@ -144,9 +94,9 @@ la_array = np.linspace(la*0.9, la*1.1, 10)
 S_array = np.zeros(len(la_array))
 
 for i, laa in enumerate(la_array):
-    Enks_up = bands_func.diag_func(kxx, kyy, laa, s = 1, B = B, ts = ts_up)[0]
-    Enks_dn = bands_func.diag_func(kxx, kyy, laa, s = -1, B = B, ts = ts_dn)[0]
-    S_array[i] = bands_func.compute_S(Enks_up, Enks_dn, T)
+    Enks_up = diag_func(kxx, kyy, laa, s = 1, B = B, ts = ts_up)[0]
+    Enks_dn = diag_func(kxx, kyy, laa, s = -1, B = B, ts = ts_dn)[0]
+    S_array[i] = compute_S(Enks_up, Enks_dn, T)
 
 line = axes.plot(la_array, S_array)
 plt.setp(line, ls = "--", c = '#F60000', lw = 3, marker = "o", mfc = 'w', ms = 6.5, mec = '#F60000', mew = 2.5)
@@ -163,11 +113,11 @@ axes.set_ylabel(r"$S$", labelpad = 8)
 
 kxx_p, kyy_p = np.meshgrid(kx, np.zeros(1), indexing = 'ij')
 
-Enks_up_p, Enks_ndiag_up_p, Vnks_up_p, dHks_dkx_up_p, dHks_dky_up_p = bands_func.diag_func(kxx_p, kyy_p, la, s = 1, B = B, ts = ts_up)[0:-1]
-Enks_dn_p, Enks_ndiag_dn_p, Vnks_dn_p, dHks_dkx_dn_p, dHks_dky_dn_p = bands_func.diag_func(kxx_p, kyy_p, la, s = -1, B = B, ts = ts_dn)[0:-1]
+Enks_up_p, Enks_ndiag_up_p, Vnks_up_p, dHks_dkx_up_p, dHks_dky_up_p = diag_func(kxx_p, kyy_p, la, s = 1, B = B, ts = ts_up)[0:-1]
+Enks_dn_p, Enks_ndiag_dn_p, Vnks_dn_p, dHks_dkx_dn_p, dHks_dky_dn_p = diag_func(kxx_p, kyy_p, la, s = -1, B = B, ts = ts_dn)[0:-1]
 
-Omega_nks_up_p = bands_func.berry_phase(Enks_up_p, Vnks_up_p, dHks_dkx_up_p, dHks_dky_up_p)
-Omega_nks_dn_p = bands_func.berry_phase(Enks_dn_p, Vnks_dn_p, dHks_dkx_dn_p, dHks_dky_dn_p)
+Omega_nks_up_p = berry_phase(Enks_up_p, Vnks_up_p, dHks_dkx_up_p, dHks_dky_up_p)
+Omega_nks_dn_p = berry_phase(Enks_dn_p, Vnks_dn_p, dHks_dkx_dn_p, dHks_dky_dn_p)
 
 ## Berry phase vs kx ky = 0 :::::::::::::::::::::::::::::::::::::::::::::::::::#
 
@@ -215,7 +165,7 @@ for tick in axes.yaxis.get_major_ticks():
 
 #///// Plot /////#
 
-Enks_up_p = bands_func.diag_func(kxx_p, kyy_p, la, s = 1, B = B, ts = ts_up)[0]
+Enks_up_p = diag_func(kxx_p, kyy_p, la, s = 1, B = B, ts = ts_up)[0]
 
 line = axes.plot(kxx_p / pi, Enks_up_p[:,0, 0])
 plt.setp(line, ls = "-", c = '#FF0000', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
@@ -224,7 +174,7 @@ plt.setp(line, ls = "-", c = '#00E054', lw = 3, marker = "", mfc = 'w', ms = 6.5
 line = axes.plot(kxx_p / pi, Enks_up_p[:,0, 2])
 plt.setp(line, ls = "-", c = '#7D44FF', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#7D44FF', mew = 2.5)
 
-Enks_dn_p = bands_func.diag_func(kxx_p, kyy_p, la, s = -1, B = B, ts = ts_dn)[0]
+Enks_dn_p = diag_func(kxx_p, kyy_p, la, s = -1, B = B, ts = ts_dn)[0]
 
 line = axes.plot(kxx_p / pi, Enks_dn_p[:,0, 0])
 plt.setp(line, ls = "--", c = '#FF0000', lw = 3, marker = "", mfc = 'w', ms = 6.5, mec = '#FF0000', mew = 2.5)
