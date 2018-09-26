@@ -20,7 +20,7 @@ kB = 1
 ## Parameters :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 B = 0.01 # magnetic field in unit of energy g * muB * B
 J = 1
-D = 0.2 * J
+D = 0.1 * J
 
 resolution_k = 100
 T_array = np.arange(0.2, 1.3, 0.01)[::-1]
@@ -63,7 +63,7 @@ print("kxy = ", kxy_array)
 ## Save Data >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
 Data = np.vstack((T_array/J, kxy_array))
 Data = Data.transpose()
-file_name =  "data.dat"
+file_name =  "kxy_.dat"
 np.savetxt(file_name, Data, fmt='%.7e', header = "T/J\tkxy", comments = "#")
 
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<#
@@ -106,13 +106,13 @@ for tick in axes.yaxis.get_major_ticks():
 
 color = '#29FB87'
 
-line = axes.plot(T_array / J, kxy_array)
+line = axes.plot(T_array / J, kxy_array / T_array)
 plt.setp(line, ls ="-", c = color, lw = 3, marker = "", mfc = 'k', ms = 8, mec = "#7E2320", mew= 2)  # set properties
 
 axes.set_xlim(0, 1.5)   # limit for xaxis
 axes.set_ylim(None, 0) # leave the ymax auto, but fix ymin
 axes.set_xlabel(r"$k_{\rm B}T$ / $J$", labelpad = 8)
-axes.set_ylabel(r"$\kappa_{\rm xy}$", labelpad = 8)
+axes.set_ylabel(r"$\kappa_{\rm xy}$ / $T$", labelpad = 8)
 
 
 ##///Set ticks space and minor ticks space ///#
