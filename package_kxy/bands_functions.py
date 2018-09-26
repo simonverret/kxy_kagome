@@ -7,7 +7,7 @@ from scipy.special import spence as dilog
 np.set_printoptions(6,suppress=True,sign="+",floatmode="fixed")
 from functools import partial
 from scipy import optimize
-from numba import jit, prange
+from numba import jit
 ##>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
 
 ## Universal Constant :::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
@@ -180,7 +180,6 @@ def compute_ts(chi_up, chi_dn, J, D, s):
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
 ## Bose - Einstein statics
-@jit(nopython=True)
 def n_B(x):
 
     # index_pos = x > 0

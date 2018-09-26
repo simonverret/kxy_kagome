@@ -29,8 +29,8 @@ resolution_k = 100
 
 # Initial parameters for root algorithm :::::::::::::::::::::::::::::::::::::::#
 T = 1.35
-chi_up =  -0.3517514278535367
-chi_dn =  -0.3384697556512993
+chi_up_ini =  -0.095936
+chi_dn_ini =  -0.093086
 
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
@@ -42,15 +42,15 @@ kxx, kyy = np.meshgrid(kx, ky, indexing = 'ij')
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 ## Initialize guessed values for root function ##
 
-ts_up_ini = compute_ts(chi_up, chi_dn, J, D, 1)
-ts_dn_ini = compute_ts(chi_up, chi_dn, J, D, -1)
+ts_up_ini = compute_ts(chi_up_ini, chi_dn_ini, J, D, 1)
+ts_dn_ini = compute_ts(chi_up_ini, chi_dn_ini, J, D, -1)
 
 la_min_up = diag_func(kxx, kyy, la = 0, s = 1, B = B, ts = ts_up_ini)[-1]
 la_min_dn = diag_func(kxx, kyy, la = 0, s = -1, B = B, ts = ts_dn_ini)[-1]
 
 la_min = np.max([la_min_up, la_min_dn]) # prevent from having negative eigen values in the root algorithm
 
-kxy, la, chi_up, chi_dn, ts_up, ts_dn = kxy_algorithm(kxx, kyy, B, D, J, T, la_min, chi_up, chi_dn, steps_on_chi_ini = True)
+kxy, la, chi_up, chi_dn, ts_up, ts_dn = kxy_algorithm(kxx, kyy, B, D, J, T, la_min, chi_up_ini, chi_dn_ini, steps_on_chi_ini = True)
 
 print("kxy = " + str(kxy))
 
