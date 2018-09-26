@@ -2,13 +2,12 @@
 
 ## Modules <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<#
 import numpy as np
-from numpy import cos, sin, pi, sqrt, exp, log
-from numpy.linalg import multi_dot
+from numpy import cos, sin, pi, sqrt, exp, log, conj, dot
 from scipy.special import spence as dilog
 np.set_printoptions(6,suppress=True,sign="+",floatmode="fixed")
 from functools import partial
 from scipy import optimize
-# from numba import jit, prange
+from numba import jit, prange
 ##>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
 
 ## Universal Constant :::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
@@ -30,7 +29,7 @@ def hamiltonian(kx, ky, la, s, B, ts):
     c2 = cos(k2)
     c3 = cos(k3)
 
-    tsc = np.conj(ts)
+    tsc = conj(ts)
 
     len_kx = kx.shape[0]
     len_ky = ky.shape[1]
@@ -59,7 +58,7 @@ def derivative_kx_hamiltonian(kx, ky, la, s, B, ts):
     s2 = - sin(k2)
     s3 = 0.5 * sin(k3)
 
-    tsc = np.conj(ts)
+    tsc = conj(ts)
 
     len_kx = kx.shape[0]
     len_ky = ky.shape[1]
@@ -88,7 +87,7 @@ def derivative_ky_hamiltonian(kx, ky, la, s, B, ts):
     s2 = 0 * sin(k2)
     s3 = - sqrt(3) / 2 * sin(k3)
 
-    tsc = np.conj(ts)
+    tsc = conj(ts)
 
     len_kx = kx.shape[0]
     len_ky = ky.shape[1]
@@ -181,15 +180,18 @@ def compute_ts(chi_up, chi_dn, J, D, s):
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
 ## Bose - Einstein statics
+@jit(nopython=True)
 def n_B(x):
 
-    index_pos = x > 0
-    index_neg = x <= 0
+    # index_pos = x > 0
+    # index_neg = x <= 0
 
-    nB = np.zeros(x.shape)
+    # nB = np.zeros(x.shape)
 
-    nB[index_pos] = 1 / (exp(x[index_pos]) - 1)
-    nB[index_neg] = 0
+    # nB[index_pos] = 1 / (exp(x[index_pos]) - 1)
+    # nB[index_neg] = 0
+
+    nB = 1 / (exp(x) - 1)
 
     return nB
 
@@ -264,6 +266,7 @@ def residual_S_chi(pars, kx, ky, B, J, D, T):
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
 ## Berry phase
+@jit(nopython=True)
 def berry_phase(Enks, Vnks, dHks_dkx, dHks_dky):
 
     """
@@ -277,31 +280,31 @@ def berry_phase(Enks, Vnks, dHks_dkx, dHks_dky):
     len_kx = Enks.shape[0]
     len_ky = Enks.shape[1]
 
-    dVnks_dkx = np.zeros((len_kx, len_ky, 3, 3), dtype = complex) # # dim: i, j, l, n
-    dVnks_dky = np.zeros((len_kx, len_ky, 3, 3), dtype = complex) # # dim: i, j, l, n
+    dVnks_dkx = np.zeros((len_kx, len_ky, 3, 3), dtype = np.complex64) # # dim: i, j, l, n
+    dVnks_dky = np.zeros((len_kx, len_ky, 3, 3), dtype = np.complex64) # # dim: i, j, l, n
 
-    Omega_nks = np.zeros((len_kx, len_ky, 3), dtype = float) # dim: i, j, n
+    Omega_nks = np.zeros((len_kx, len_ky, 3), dtype = np.float64) # dim: i, j, n
 
     for i in range(len_kx):
         for j in range(len_ky):
 
-                dVnks_dkx[i,j,:,0] = multi_dot([np.conj(Vnks[i,j,:,1]), dHks_dkx[i,j,:,:], Vnks[i,j,:,0]]) / (Enks[i,j,0] - Enks[i,j,1]) * Vnks[i,j,:,1]  \
-                                   + multi_dot([np.conj(Vnks[i,j,:,2]), dHks_dkx[i,j,:,:], Vnks[i,j,:,0]]) / (Enks[i,j,0] - Enks[i,j,2]) * Vnks[i,j,:,2]
-                dVnks_dkx[i,j,:,1] = multi_dot([np.conj(Vnks[i,j,:,0]), dHks_dkx[i,j,:,:], Vnks[i,j,:,1]]) / (Enks[i,j,1] - Enks[i,j,0]) * Vnks[i,j,:,0]  \
-                                   + multi_dot([np.conj(Vnks[i,j,:,2]), dHks_dkx[i,j,:,:], Vnks[i,j,:,1]]) / (Enks[i,j,1] - Enks[i,j,2]) * Vnks[i,j,:,2]
-                dVnks_dkx[i,j,:,2] = multi_dot([np.conj(Vnks[i,j,:,0]), dHks_dkx[i,j,:,:], Vnks[i,j,:,2]]) / (Enks[i,j,2] - Enks[i,j,0]) * Vnks[i,j,:,0]  \
-                                   + multi_dot([np.conj(Vnks[i,j,:,1]), dHks_dkx[i,j,:,:], Vnks[i,j,:,2]]) / (Enks[i,j,2] - Enks[i,j,1]) * Vnks[i,j,:,1]
+                dVnks_dkx[i,j,:,0] = conj(Vnks[i,j,:,1]).dot(dHks_dkx[i,j,:,:]).dot(Vnks[i,j,:,0]) / (Enks[i,j,0] - Enks[i,j,1]) * Vnks[i,j,:,1]  \
+                                   + conj(Vnks[i,j,:,2]).dot(dHks_dkx[i,j,:,:]).dot(Vnks[i,j,:,0]) / (Enks[i,j,0] - Enks[i,j,2]) * Vnks[i,j,:,2]
+                dVnks_dkx[i,j,:,1] = conj(Vnks[i,j,:,0]).dot(dHks_dkx[i,j,:,:]).dot(Vnks[i,j,:,1]) / (Enks[i,j,1] - Enks[i,j,0]) * Vnks[i,j,:,0]  \
+                                   + conj(Vnks[i,j,:,2]).dot(dHks_dkx[i,j,:,:]).dot(Vnks[i,j,:,1]) / (Enks[i,j,1] - Enks[i,j,2]) * Vnks[i,j,:,2]
+                dVnks_dkx[i,j,:,2] = conj(Vnks[i,j,:,0]).dot(dHks_dkx[i,j,:,:]).dot(Vnks[i,j,:,2]) / (Enks[i,j,2] - Enks[i,j,0]) * Vnks[i,j,:,0]  \
+                                   + conj(Vnks[i,j,:,1]).dot(dHks_dkx[i,j,:,:]).dot(Vnks[i,j,:,2]) / (Enks[i,j,2] - Enks[i,j,1]) * Vnks[i,j,:,1]
 
-                dVnks_dky[i,j,:,0] = multi_dot([np.conj(Vnks[i,j,:,1]), dHks_dky[i,j,:,:], Vnks[i,j,:,0]]) / (Enks[i,j,0] - Enks[i,j,1]) * Vnks[i,j,:,1]  \
-                                   + multi_dot([np.conj(Vnks[i,j,:,2]), dHks_dky[i,j,:,:], Vnks[i,j,:,0]]) / (Enks[i,j,0] - Enks[i,j,2]) * Vnks[i,j,:,2]
-                dVnks_dky[i,j,:,1] = multi_dot([np.conj(Vnks[i,j,:,0]), dHks_dky[i,j,:,:], Vnks[i,j,:,1]]) / (Enks[i,j,1] - Enks[i,j,0]) * Vnks[i,j,:,0]  \
-                                   + multi_dot([np.conj(Vnks[i,j,:,2]), dHks_dky[i,j,:,:], Vnks[i,j,:,1]]) / (Enks[i,j,1] - Enks[i,j,2]) * Vnks[i,j,:,2]
-                dVnks_dky[i,j,:,2] = multi_dot([np.conj(Vnks[i,j,:,0]), dHks_dky[i,j,:,:], Vnks[i,j,:,2]]) / (Enks[i,j,2] - Enks[i,j,0]) * Vnks[i,j,:,0]  \
-                                   + multi_dot([np.conj(Vnks[i,j,:,1]), dHks_dky[i,j,:,:], Vnks[i,j,:,2]]) / (Enks[i,j,2] - Enks[i,j,1]) * Vnks[i,j,:,1]
+                dVnks_dky[i,j,:,0] = conj(Vnks[i,j,:,1]).dot(dHks_dky[i,j,:,:]).dot(Vnks[i,j,:,0]) / (Enks[i,j,0] - Enks[i,j,1]) * Vnks[i,j,:,1]  \
+                                   + conj(Vnks[i,j,:,2]).dot(dHks_dky[i,j,:,:]).dot(Vnks[i,j,:,0]) / (Enks[i,j,0] - Enks[i,j,2]) * Vnks[i,j,:,2]
+                dVnks_dky[i,j,:,1] = conj(Vnks[i,j,:,0]).dot(dHks_dky[i,j,:,:]).dot(Vnks[i,j,:,1]) / (Enks[i,j,1] - Enks[i,j,0]) * Vnks[i,j,:,0]  \
+                                   + conj(Vnks[i,j,:,2]).dot(dHks_dky[i,j,:,:]).dot(Vnks[i,j,:,1]) / (Enks[i,j,1] - Enks[i,j,2]) * Vnks[i,j,:,2]
+                dVnks_dky[i,j,:,2] = conj(Vnks[i,j,:,0]).dot(dHks_dky[i,j,:,:]).dot(Vnks[i,j,:,2]) / (Enks[i,j,2] - Enks[i,j,0]) * Vnks[i,j,:,0]  \
+                                   + conj(Vnks[i,j,:,1]).dot(dHks_dky[i,j,:,:]).dot(Vnks[i,j,:,2]) / (Enks[i,j,2] - Enks[i,j,1]) * Vnks[i,j,:,1]
 
-                Omega_nks[i,j,0] = 2 * np.real( 1j * np.dot(np.conj(dVnks_dkx[i,j,:,0]),dVnks_dky[i,j,:,0]))
-                Omega_nks[i,j,1] = 2 * np.real( 1j * np.dot(np.conj(dVnks_dkx[i,j,:,1]),dVnks_dky[i,j,:,1]))
-                Omega_nks[i,j,2] = 2 * np.real( 1j * np.dot(np.conj(dVnks_dkx[i,j,:,2]),dVnks_dky[i,j,:,2]))
+                Omega_nks[i,j,0] = 2 * np.real( 1j * np.dot(conj(dVnks_dkx[i,j,:,0]),dVnks_dky[i,j,:,0]))
+                Omega_nks[i,j,1] = 2 * np.real( 1j * np.dot(conj(dVnks_dkx[i,j,:,1]),dVnks_dky[i,j,:,1]))
+                Omega_nks[i,j,2] = 2 * np.real( 1j * np.dot(conj(dVnks_dkx[i,j,:,2]),dVnks_dky[i,j,:,2]))
 
     return Omega_nks
 
@@ -330,8 +333,8 @@ def kxy_single_value(Enks_up, Enks_dn, Omega_nks_up, Omega_nks_dn, T):
 
     Nt = len_kx * len_ky
 
-    coeff_up = np.empty((len_kx, len_ky, 3), dtype = float) # dim: i, j, n
-    coeff_dn = np.empty((len_kx, len_ky, 3), dtype = float) # dim: i, j, n
+    coeff_up = np.empty((len_kx, len_ky, 3), dtype = np.float64) # dim: i, j, n
+    coeff_dn = np.empty((len_kx, len_ky, 3), dtype = np.float64) # dim: i, j, n
 
     coeff_up[:, :, 0] = ( c2_func( n_B( Enks_up[:, :, 0] / (kB * T) ) ) - pi**2 / 3 ) * Omega_nks_up[:, :, 0]
     coeff_up[:, :, 1] = ( c2_func( n_B( Enks_up[:, :, 1] / (kB * T) ) ) - pi**2 / 3 ) * Omega_nks_up[:, :, 1]
