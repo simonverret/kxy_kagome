@@ -11,16 +11,9 @@ from package_kxy.bands_functions import *
 import time
 ##>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
 
-## Universal Constant :::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
-
-# hbar = 1.05457173e-34 # J.s
-# e = 1.60217657e-19 # coulombs
-# kB = 1.380648e-23 # J / K
-kB = 1
-
 ## Parameters :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
-B = 0.01 # magnetic field in unit of energy g * muB * B
 J = 1
+B = 0.01 * J
 D = 0.1 * J
 
 resolution_k = 100

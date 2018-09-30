@@ -2,7 +2,7 @@
 
 ## Modules <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<#
 import numpy as np
-from numpy import cos, sin, pi, sqrt, exp
+from numpy import pi, sqrt
 np.set_printoptions(6,suppress=True,sign="+",floatmode="fixed")
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -11,25 +11,17 @@ from package_kxy.bands_functions import *
 import time
 ##>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
 
-## Universal Constant :::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
-# hbar = 1.05457173e-34 # J.s
-# e = 1.60217657e-19 # coulombs
-# kB = 1.380648e-23 # J / K
-kB = 1
-
 ## Parameters :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
-B = 0.01 # magnetic field in unit of energy g * muB * B
 J = 1
-D = 0.1 * J
+B = 0.01 * J
+D = 0.01 * J
 
 resolution_k = 100
-T_array = np.arange(0.2, 1.3, 0.01)[::-1]
+T_array = np.arange(0.02, 1.3, 0.01)[::-1]
 
 # Initial parameters for root algorithm :::::::::::::::::::::::::::::::::::::::#
-chi_up_ini = -0.35
-chi_dn_ini = -0.35
-T = 1.3
-
+chi_up_ini = -0.38
+chi_dn_ini = -0.37
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 # Contains the hexago volume in a rectangle of side pi x (2*pi/sqrt(3))
@@ -50,21 +42,35 @@ la_min = np.max([la_min_up, la_min_dn]) # prevent from having negative eigen val
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 ## Compute Kxy ##
 kxy_array = np.empty(T_array.shape)
+la_array = np.empty(T_array.shape)
+chi_up_array = np.empty(T_array.shape)
+chi_dn_array = np.empty(T_array.shape)
+B_array = np.ones(T_array.shape) * B
+J_array = np.ones(T_array.shape) * J
+D_array = np.ones(T_array.shape) * D
+res_array = np.ones(T_array.shape) * resolution_k
 
 for i, t in enumerate(T_array):
+
     start_time_kxy = time.time()
+
     kxy, la, chi_up, chi_dn = kxy_algorithm(kxx, kyy, B, D, J, t, la_min, chi_up_ini, chi_dn_ini)[:-2]
     (la_min, chi_up_ini, chi_dn_ini) = (la, chi_up, chi_dn) # change the initial values for next T
+
     kxy_array[i] = kxy
+    la_array[i] = la
+    chi_up_array[i] = chi_up
+    chi_dn_array[i] = chi_dn
+
     print("One value kxy time : %.6s seconds" % (time.time() - start_time_kxy))
 
-print("kxy = ", kxy_array)
 
 ## Save Data >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
-Data = np.vstack((T_array/J, kxy_array))
+Data = np.vstack((T_array/J, B_array, kxy_array, la_array, chi_up_array, chi_dn_array, J_array, D_array, res_array))
 Data = Data.transpose()
-file_name =  "kxy_.dat"
-np.savetxt(file_name, Data, fmt='%.7e', header = "T/J\tkxy", comments = "#")
+folder = "../data_sim/"
+file_name =  "TS-kxy" + "_B_" + str(B) + "_J_" + str(J) + "_D_" + str(D) + "_res_" + str(resolution_k) + ".dat"
+np.savetxt(folder + file_name, Data, fmt='%.7e', header = "T/J\tB\tkxy\tla\tchi_up\tchi_dn\tJ\tD\tresolution_k", comments = "#")
 
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<#
 # Figures PRINT ///////////////////////////////////////////////////////////////#
@@ -88,10 +94,9 @@ mpl.rcParams['pdf.fonttype'] = 3  # Output Type 3 (Type3) or Type 42 (TrueType),
                                     # editing the text in illustrator
 
 
-
 #>>>> Kxy vs T >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
 fig, axes = plt.subplots(1, 1, figsize = (9.2, 5.6)) # (1,1) means one plot, and figsize is w x h in inch of figure
-fig.subplots_adjust(left = 0.17, right = 0.81, bottom = 0.18, top = 0.95) # adjust the box of axes regarding the figure size
+fig.subplots_adjust(left = 0.18, right = 0.82, bottom = 0.18, top = 0.95) # adjust the box of axes regarding the figure size
 
 axes.axhline(y = 0, ls ="--", c ="k", linewidth = 0.6)
 
@@ -102,14 +107,16 @@ for tick in axes.yaxis.get_major_ticks():
     tick.set_pad(8)
 
 #///// Labels //////#
-# fig.text(0.79,0.86, samplename, ha = "right")
+fig.text(0.84, 0.86, r"$B$ = " + str(B))
+fig.text(0.84, 0.79, r"$J$  = " + str(J))
+fig.text(0.84, 0.72, r"$D$ = " + str(D))
 
 color = '#29FB87'
 
 line = axes.plot(T_array / J, kxy_array / T_array)
 plt.setp(line, ls ="-", c = color, lw = 3, marker = "", mfc = 'k', ms = 8, mec = "#7E2320", mew= 2)  # set properties
 
-axes.set_xlim(0, 1.5)   # limit for xaxis
+axes.set_xlim(0, None)   # limit for xaxis
 axes.set_ylim(None, 0) # leave the ymax auto, but fix ymin
 axes.set_xlabel(r"$k_{\rm B}T$ / $J$", labelpad = 8)
 axes.set_ylabel(r"$\kappa_{\rm xy}$ / $T$", labelpad = 8)
@@ -130,6 +137,9 @@ axes.locator_params(axis = 'y', nbins = 6)
 
 
 plt.show()
-fig.savefig("kxy_.pdf", bbox_inches = "tight")
+
+folder = "../figures_sim/"
+figure_name =  "TS-kxy" + "_B_" + str(B) + "_J_" + str(J) + "_D_" + str(D) + "_res_" + str(resolution_k) + ".pdf"
+fig.savefig(folder + figure_name, bbox_inches = "tight")
 
 #//////////////////////////////////////////////////////////////////////////////#
