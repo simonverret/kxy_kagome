@@ -41,7 +41,7 @@ def hamiltonian(kx, ky, la, s, B, ts):
                     [ts * c3 , tsc * c2, diagonal]]) # shape (3, 3, len_kx, len_ky)
 
     ## Move axis for diagonalization
-    Hks = np.moveaxis(Hks, [-2, -1], [0, 1]) # shape (len_kx, len_ky, 3, 3)
+    Hks = np.moveaxis(Hks, [-2, -1], [0, 1]) # redistribute axis positions with shape (len_kx, len_ky, 3, 3)
 
     return Hks
 
@@ -70,7 +70,7 @@ def derivative_kx_hamiltonian(kx, ky, la, s, B, ts):
                         [ts * s3 , tsc * s2, diagonal]]) # shape (3, 3, len_kx, len_ky)
 
     ## Move axis
-    dHks_dkx = np.moveaxis(dHks_dkx, [-2, -1], [0, 1]) # shape (len_kx, len_ky, 3, 3)
+    dHks_dkx = np.moveaxis(dHks_dkx, [-2, -1], [0, 1]) # redistribute axis positions with shape (len_kx, len_ky, 3, 3)
 
     return dHks_dkx
 
@@ -99,7 +99,7 @@ def derivative_ky_hamiltonian(kx, ky, la, s, B, ts):
                         [ts * s3 , tsc * s2, diagonal]]) # shape (3, 3, len_kx, len_ky)
 
     ## Move axis
-    dHks_dky = np.moveaxis(dHks_dky, [-2, -1], [0, 1]) # shape (len_kx, len_ky, 3, 3)
+    dHks_dky = np.moveaxis(dHks_dky, [-2, -1], [0, 1]) # redistribute axis positions with shape (len_kx, len_ky, 3, 3)
 
     return dHks_dky
 

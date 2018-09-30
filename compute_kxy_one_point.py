@@ -7,10 +7,8 @@ np.set_printoptions(6,suppress=True,sign="+",floatmode="fixed")
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from mpl_toolkits.mplot3d import axes3d
-from functools import partial
-from scipy import optimize
-from numpy.linalg import multi_dot
 from package_kxy.bands_functions import *
+import time
 ##>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>#
 
 ## Universal Constant :::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
@@ -41,6 +39,7 @@ kxx, kyy = np.meshgrid(kx, ky, indexing = 'ij')
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 ## Initialize guessed values for root function ##
+start_time_kxy = time.time()
 
 ts_up_ini = compute_ts(chi_up_ini, chi_dn_ini, J, D, 1)
 ts_dn_ini = compute_ts(chi_up_ini, chi_dn_ini, J, D, -1)
@@ -53,6 +52,8 @@ la_min = np.max([la_min_up, la_min_dn]) # prevent from having negative eigen val
 kxy, la, chi_up, chi_dn, ts_up, ts_dn = kxy_algorithm(kxx, kyy, B, D, J, T, la_min, chi_up_ini, chi_dn_ini, steps_on_chi_ini = True)
 
 print("kxy = " + str(kxy))
+
+print("One value kxy time : %.6s seconds" % (time.time() - start_time_kxy))
 
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<#
 # Figures PRINT ///////////////////////////////////////////////////////////////#
