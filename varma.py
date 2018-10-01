@@ -169,26 +169,32 @@ solLamda = initLamda
 solChiUp = initChiUp
 solChiDn = initChiDn
 
-sol_object = optimize.root(selfConsistCond, np.array([initLamda,initChiUp,initChiDn]))
-print("\nSolution reached in "+str(selfConsistCond.counter)+" call:")
-print(sol_object.x)
-solLamda = sol_object.x[0]
-solChiUp = sol_object.x[1]
-solChiDn = sol_object.x[2]
+# sol_object = optimize.root(selfConsistCond, np.array([initLamda,initChiUp,initChiDn]))
+# print("\nSolution reached in "+str(selfConsistCond.counter)+" call:")
+# print(sol_object.x)
+# solLamda = sol_object.x[0]
+# solChiUp = sol_object.x[1]
+# solChiDn = sol_object.x[2]
 
 
 #######################
 #### VARIOUS PLOTS ####
 #######################
 
-tUp = hopping( 1,solChiUp,solChiDn)
-tDn = hopping(-1,solChiDn,solChiUp)
+
+#######
+#########
+#########
+####
+##### I WAS HERE
+
+tppTheta = RII*np.cos(thetaXY)+1j*RII*np.sin(thetaXY)
+
+
+
 bandsUp,eigVecsUp = eighOnMesh( 1,solLamda,tUp)
-bandsDn,eigVecsDn = eighOnMesh(-1,solLamda,tDn)
 dhdkxUp,dhdkyUp = dhdkOnMesh( 1,solLamda,tUp)
-dhdkxDn,dhdkyDn = dhdkOnMesh(-1,solLamda,tDn)
 omegaUp = berryPhaseOnMesh(bandsUp,eigVecsUp,dhdkxUp,dhdkyUp)
-omegaDn = berryPhaseOnMesh(bandsDn,eigVecsDn,dhdkxDn,dhdkyDn)
 
 
 # #### BANDS FOR SPIN UP AND DOWN in 3D
