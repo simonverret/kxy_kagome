@@ -13,17 +13,10 @@ eta2 =  np.array([1,0])
 eta3 =  np.array([-1,np.sqrt(3)])/2
 
 J=1
-<<<<<<< HEAD
 D=0.225
 B=0.01
 T=1
 res = 240
-=======
-D=0.2
-B=0.01
-T=1
-res = 33
->>>>>>> 1bcc2dd99f464741251f22dcf4ab1fccdc42a7d7
 resX = res+1
 
 initLamda = +3.2040
