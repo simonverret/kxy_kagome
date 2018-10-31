@@ -3,25 +3,28 @@ from scipy import optimize
 np.set_printoptions(4,suppress=True,sign="+",floatmode="fixed")
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from scipy.special import spence as dilog
 
 NSPIN = 2
 DIM = 3
 spinError = ValueError('spin must be 1 or -1')
+verbose = 1
 
 eta1 = -1*np.array([1,np.sqrt(3)])/2
 eta2 =  np.array([1,0])
 eta3 =  np.array([-1,np.sqrt(3)])/2
 
 J=1
-D=0.225
+D=0.2
 B=0.01
 T=1
-res = 240
+res = 41
 resX = res+1
 
-initLamda = +3.2040
-initChiUp = -0.7087
-initChiDn = -0.6820
+
+initLamda = +3.1996
+initChiUp = -0.7083
+initChiDn = -0.6816
 
 resY = resX # previously squarer: int( resX * 2/np.sqrt(3) )
 Nk = resX*resY
@@ -65,39 +68,37 @@ def dummyIntegral(qtyOnMesh):
     return np.sum(qtyOnMesh) / Nk
 
 
-def selfConsistCond(varSet):
+def selfConsistCond(varSet,beta=1/T):
     selfConsistCond.counter += 1
     lamda = varSet[0]
     chiUp = varSet[1]
     chiDn = varSet[2]
-
+ 
     tUp = hopping( 1,chiUp,chiDn)
     tDn = hopping(-1,chiDn,chiUp)
     bandsUp = eighOnMesh( 1,lamda,tUp)[0]
-    print(np.shape(bandsUp))
     bandsDn = eighOnMesh(-1,lamda,tDn)[0]
 
     # Doki et al., Universal..., 2018, sup. mat. Eq.(S6a)
-    S = dummyIntegral( bose(bandsUp) + bose(bandsDn) )/2.
+    S = dummyIntegral( bose(bandsUp,beta) + bose(bandsDn,beta) )/2.
     # Doki et al., Universal..., 2018, sup. mat. Eq.(S6b)
     fnkUp = (bandsUp-(lamda-B)) # =the eigenvalues of the hopping matrix
     fnkDn = (bandsDn-(lamda+B))
-    resChiUp = dummyIntegral( fnkUp * bose(bandsUp) )/(np.abs(tUp))
-    resChiDn = dummyIntegral( fnkDn * bose(bandsDn) )/(np.abs(tDn))
+    resChiUp = dummyIntegral( fnkUp * bose(bandsUp,beta) )/(np.abs(tUp))
+    resChiDn = dummyIntegral( fnkDn * bose(bandsDn,beta) )/(np.abs(tDn))
 
     conditionlamda = 2*S-1
     conditionChiUp = resChiUp-chiUp
     conditionChiDn = resChiDn-chiDn
 
-    print("call ",selfConsistCond.counter)
-    print("vars in  :",np.array([lamda,chiUp,chiDn]))
-    print("vars out :",np.array([S,resChiUp,resChiDn]))
-    print("residual :",np.array([conditionlamda,conditionChiUp,conditionChiDn]))
+    if (verbose>2):
+        print("call ",selfConsistCond.counter)
+        print("vars in  :",np.array([lamda,chiUp,chiDn]))
+        print("vars out :",np.array([S,resChiUp,resChiDn]))
+        print("residual :",np.array([conditionlamda,conditionChiUp,conditionChiDn]))
 
     return np.array([conditionlamda,conditionChiUp,conditionChiDn])
 selfConsistCond.counter =0
-
-
 
 
 ## Berry phase
@@ -115,7 +116,6 @@ def dhdk(XorY,kx,ky,sigma,lamda,hop):
     ])
     return dhdk + dhdk.H
 
-
 def dhdkOnMesh(sigma,lamda,hop):
     tensorShape = (len(KX),len(KY),DIM,DIM)
     dhdkxOnMesh = np.empty(tensorShape,dtype=complex)
@@ -125,7 +125,6 @@ def dhdkOnMesh(sigma,lamda,hop):
             dhdkxOnMesh[i,j,:,:] = dhdk(0,kx,ky,sigma,lamda,hop)
             dhdkyOnMesh[i,j,:,:] = dhdk(1,kx,ky,sigma,lamda,hop)
     return dhdkxOnMesh, dhdkyOnMesh
-
 
 def berryPhaseOnMesh(bands,eigVecs,dhdkx,dhdky):
     tensorShape = (len(KX),len(KY),DIM)
@@ -144,25 +143,13 @@ def berryPhaseOnMesh(bands,eigVecs,dhdkx,dhdky):
                 berryPhase[i,j,n] =  2*np.imag(np.dot(np.conj(dvdkx),dvdky))
     return berryPhase
 
-def berryPhaseOnMeshBkp(bands,eigVecs,dhdkx,dhdky):
-    tensorShape = (len(KX),len(KY),DIM)
-    berryPhase = np.zeros(tensorShape)
-    for i in range(len(KX)):
-        for j in range(len(KX)):
-            dHdkx = dhdkx[i,j,:,:]
-            dHdky = dhdky[i,j,:,:]
-            for n in range(DIM):
-                ketn = eigVecs[i,j,:,n]
-                bran = np.conj(ketn)
-                En = bands[i,j,n]
-                for m in range(DIM):
-                    if (m != n):
-                        ketm = eigVecs[i,j,:,m]
-                        bram = np.conj(ketm)
-                        Em = bands[i,j,m]
-                        berryPhase[i,j,n] += np.real(np.linalg.multi_dot([bran,dHdkx,ketm])*np.linalg.multi_dot([bram,dHdky,ketn])/((En-Em)**2))
-    return berryPhase
+def c2(x):
+    # dilog from scipy.special.spence, defined for z = 1 - x
+    c2 = (1+x)*(np.log((1+x)/x))**2 - (np.log(x))**2 - 2*dilog(1-(-x))
+    return c2
 
+def kappaxy(bands,omega,beta=1/T):
+    return -dummyIntegral( (c2(bose(bands,beta))-np.pi*np.pi/3)*omega )/beta
 
 
 
@@ -170,29 +157,62 @@ solLamda = initLamda
 solChiUp = initChiUp
 solChiDn = initChiDn
 
-sol_object = optimize.root(selfConsistCond, np.array([initLamda,initChiUp,initChiDn]))
-print("\nSolution reached in "+str(selfConsistCond.counter)+" call:")
-print(sol_object.x)
-solLamda = sol_object.x[0]
-solChiUp = sol_object.x[1]
-solChiDn = sol_object.x[2]
 
+tempList = np.concatenate((np.arange(1.2,0.5,-0.05),np.arange(0.5,0.01,-0.01)))
+kappaXyList = np.zeros(len(tempList))
+
+for ii,temp in enumerate(tempList):
+    print("\ntemp T = "+str(round(temp,3)))
+    
+    selfConsistCond.counter =0
+    sol_object = optimize.root(selfConsistCond, np.array([solLamda,solChiUp,solChiDn]), args=(1/temp,))
+    
+    print("Solution reached in "+str(selfConsistCond.counter)+" calls:")
+    print("lamba, chiUp, chiDn = ",sol_object.x)
+    solLamda = sol_object.x[0]
+    solChiUp = sol_object.x[1]
+    solChiDn = sol_object.x[2]
+
+    tUp = hopping( 1,solChiUp,solChiDn)
+    tDn = hopping(-1,solChiDn,solChiUp)
+    print("tUp, tDn = ",np.array([tUp,tDn]))
+    bandsUp,eigVecsUp = eighOnMesh( 1,solLamda,tUp)
+    bandsDn,eigVecsDn = eighOnMesh(-1,solLamda,tDn)
+    dhdkxUp,dhdkyUp   = dhdkOnMesh( 1,solLamda,tUp)
+    dhdkxDn,dhdkyDn   = dhdkOnMesh(-1,solLamda,tDn)
+    omegaUp = berryPhaseOnMesh(bandsUp,eigVecsUp,dhdkxUp,dhdkyUp)
+    omegaDn = berryPhaseOnMesh(bandsDn,eigVecsDn,dhdkxDn,dhdkyDn)
+    
+    kxy = np.real(kappaxy(bandsUp,omegaUp,beta=1/temp) + kappaxy(bandsDn,omegaDn,beta=1/temp))
+    print("kxy = ",np.array([kxy]))
+    kappaXyList[ii] = kxy
 
 #######################
 #### VARIOUS PLOTS ####
 #######################
 
-tUp = hopping( 1,solChiUp,solChiDn)
-tDn = hopping(-1,solChiDn,solChiUp)
-bandsUp,eigVecsUp = eighOnMesh( 1,solLamda,tUp)
-bandsDn,eigVecsDn = eighOnMesh(-1,solLamda,tDn)
-dhdkxUp,dhdkyUp = dhdkOnMesh( 1,solLamda,tUp)
-dhdkxDn,dhdkyDn = dhdkOnMesh(-1,solLamda,tDn)
-omegaUp = berryPhaseOnMesh(bandsUp,eigVecsUp,dhdkxUp,dhdkyUp)
-omegaDn = berryPhaseOnMesh(bandsDn,eigVecsDn,dhdkxDn,dhdkyDn)
+fig,ax = plt.subplots(1)
+Xplt = tempList
+Yplt = np.array(kappaXyList)/tempList
+ax.plot(Xplt, Yplt)
+plt.show()
 
 
-# #### BANDS FOR SPIN UP AND DOWN in 3D
+
+
+
+
+
+
+# solLamda = 2.2
+# tUp = (1.1246 + 0.34668j)*2
+# tDn = (1.137 + 0.35666j)*2
+
+# print(tUp)
+# print(tDn)
+# print(solLamda)
+
+# # #### BANDS FOR SPIN UP AND DOWN in 3D
 # X,Y = np.meshgrid(KY,KX)
 # fig = plt.figure()
 # ax = fig.gca(projection='3d')
@@ -201,7 +221,7 @@ omegaDn = berryPhaseOnMesh(bandsDn,eigVecsDn,dhdkxDn,dhdkyDn)
 #     ax.plot_surface(X, Y, bandsDn[:,:,i])
 # plt.show()
 
-# #### BERRY CURVATURE in 3D
+# # #### BERRY CURVATURE in 3D
 # X,Y = np.meshgrid(KY,KX)
 # fig = plt.figure()
 # ax = fig.gca(projection='3d')
@@ -210,24 +230,30 @@ omegaDn = berryPhaseOnMesh(bandsDn,eigVecsDn,dhdkxDn,dhdkyDn)
 #     ax.plot_surface(X, Y, omegaDn[:,:,i])
 # plt.show()
 
+# ### BANDS AND BERRY ALONG KX
+# zerox = int(res/3)+1
+# zeroy = int(res/2)
+# overx = int(res/6)+1
+# Xplt = np.concatenate( ((KX[zerox:],(KX[:overx]+np.pi))) )/(np.pi)
+# fig,ax = plt.subplots(2, sharex=True)
+# for i in range(DIM):
+#     ZpltUp = np.concatenate(( bandsUp[zerox:,zeroy,i],bandsUp[:overx,0,i] ))
+#     ZpltDn = np.concatenate(( bandsDn[zerox:,zeroy,i],bandsDn[:overx,0,i] ))
+#     ax[0].plot(Xplt, ZpltUp)
+#     ax[0].plot(Xplt, ZpltDn)
+# for i in range(DIM):
+#     ZpltUp = np.concatenate(( omegaUp[zerox:,zeroy,i],omegaUp[:overx,0,i] ))
+#     #ZpltDn = np.concatenate(( omegaDn[zerox:,zeroy,i],omegaDn[:overx,0,i] ))
+#     ax[1].plot(Xplt, ZpltUp)
+#     #ax[1].plot(Xplt, ZpltDn)
+# plt.show()
 
-### BANDS AND BERRY ALONG KX
-zerox = int(res/3)+1
-zeroy = int(res/2)
-overx = int(res/6)+1
-Xplt = np.concatenate( ((KX[zerox:],(KX[:overx]+np.pi))) )/(np.pi)
-fig,ax = plt.subplots(2, sharex=True)
-for i in range(DIM):
-    ZpltUp = np.concatenate(( bandsUp[zerox:,zeroy,i],bandsUp[:overx,0,i] ))
-    ZpltDn = np.concatenate(( bandsDn[zerox:,zeroy,i],bandsDn[:overx,0,i] ))
-    ax[0].plot(Xplt, ZpltUp)
-    ax[0].plot(Xplt, ZpltDn)
-for i in range(DIM):
-    ZpltUp = np.concatenate(( omegaUp[zerox:,zeroy,i],omegaUp[:overx,0,i] ))
-    #ZpltDn = np.concatenate(( omegaDn[zerox:,zeroy,i],omegaDn[:overx,0,i] ))
-    ax[1].plot(Xplt, ZpltUp)
-    #ax[1].plot(Xplt, ZpltDn)
-plt.show()
+# ### C2 FUNCTION
+# fig,ax = plt.subplots(1)
+# Xplt = np.arange(1,100)/10.
+# Yplt = c2(Xplt)
+# ax.plot(Xplt, Yplt)
+# plt.show()
 
 
 
