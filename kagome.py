@@ -16,7 +16,7 @@ eta3 =  np.array([-1,np.sqrt(3)])/2
 
 J=1
 D=0.2
-B=0.01
+Bfield=0.01
 T=1
 res = 41
 resX = res+1
@@ -37,7 +37,7 @@ def hopping(sigma,chiSig,chiOpp):
     return J*(chiSig+chiOpp) - 1j*sigma*D*chiOpp
 
 
-def hamiltonian(kx,ky,sigma,lamda,hop): # lambda with "b" is protected
+def hamiltonian(kx,ky,sigma,lamda,hop,B=Bfield): # lambda with "b" is protected
     k = np.array([kx,ky])
     cosk1 = np.cos(np.dot(k,eta1))
     cosk2 = np.cos(np.dot(k,eta2))
@@ -50,12 +50,12 @@ def hamiltonian(kx,ky,sigma,lamda,hop): # lambda with "b" is protected
     return h + h.H  # conjuguate transpose hence /2 on the diagonal
 
 
-def eighOnMesh(sigma,lamda,hop):
+def eighOnMesh(sigma,lamda,hop,B=Bfield):
     tensorShape = (len(KX),len(KY),DIM,DIM)
     hamiltonianOnMesh = np.empty(tensorShape,dtype=complex)
     for i,kx in enumerate(KX):
         for j,ky in enumerate(KY):
-            hamiltonianOnMesh[i,j,:,:] = hamiltonian(kx,ky,sigma,lamda,hop)
+            hamiltonianOnMesh[i,j,:,:] = hamiltonian(kx,ky,sigma,lamda,hop,B)
     # print(hamiltonianOnMesh[10,10,:,:])
     return np.linalg.eigh(hamiltonianOnMesh)
 
@@ -68,7 +68,7 @@ def dummyIntegral(qtyOnMesh):
     return np.sum(qtyOnMesh) / Nk
 
 
-def selfConsistCond(varSet,beta=1/T):
+def selfConsistCond(varSet,beta=1/T, B=Bfield):
     selfConsistCond.counter += 1
     lamda = varSet[0]
     chiUp = varSet[1]
@@ -76,8 +76,8 @@ def selfConsistCond(varSet,beta=1/T):
  
     tUp = hopping( 1,chiUp,chiDn)
     tDn = hopping(-1,chiDn,chiUp)
-    bandsUp = eighOnMesh( 1,lamda,tUp)[0]
-    bandsDn = eighOnMesh(-1,lamda,tDn)[0]
+    bandsUp = eighOnMesh( 1,lamda,tUp,B)[0]
+    bandsDn = eighOnMesh(-1,lamda,tDn,B)[0]
 
     # Doki et al., Universal..., 2018, sup. mat. Eq.(S6a)
     S = dummyIntegral( bose(bandsUp,beta) + bose(bandsDn,beta) )/2.
@@ -152,32 +152,24 @@ def kappaxy(bands,omega,beta=1/T):
     return -dummyIntegral( (c2(bose(bands,beta))-np.pi*np.pi/3)*omega )/beta
 
 
+def evaluateKappaXY(initialValues,temp,Bfield):
+    print("\ntemp T = "+str(round(temp,3))+"  field B = "+str(round(Bfield,3)))
 
-solLamda = initLamda
-solChiUp = initChiUp
-solChiDn = initChiDn
-
-
-tempList = np.concatenate((np.arange(1.2,0.5,-0.05),np.arange(0.5,0.01,-0.01)))
-kappaXyList = np.zeros(len(tempList))
-
-for ii,temp in enumerate(tempList):
-    print("\ntemp T = "+str(round(temp,3)))
-    
     selfConsistCond.counter =0
-    sol_object = optimize.root(selfConsistCond, np.array([solLamda,solChiUp,solChiDn]), args=(1/temp,))
-    
+    sol_object = optimize.root(selfConsistCond, np.array(initialValues), args=(1/temp,Bfield))
     print("Solution reached in "+str(selfConsistCond.counter)+" calls:")
+    
     print("lamba, chiUp, chiDn = ",sol_object.x)
     solLamda = sol_object.x[0]
     solChiUp = sol_object.x[1]
     solChiDn = sol_object.x[2]
+    nextValues = sol_object.x
 
     tUp = hopping( 1,solChiUp,solChiDn)
     tDn = hopping(-1,solChiDn,solChiUp)
     print("tUp, tDn = ",np.array([tUp,tDn]))
-    bandsUp,eigVecsUp = eighOnMesh( 1,solLamda,tUp)
-    bandsDn,eigVecsDn = eighOnMesh(-1,solLamda,tDn)
+    bandsUp,eigVecsUp = eighOnMesh( 1,solLamda,tUp,B=Bfield)
+    bandsDn,eigVecsDn = eighOnMesh(-1,solLamda,tDn,B=Bfield)
     dhdkxUp,dhdkyUp   = dhdkOnMesh( 1,solLamda,tUp)
     dhdkxDn,dhdkyDn   = dhdkOnMesh(-1,solLamda,tDn)
     omegaUp = berryPhaseOnMesh(bandsUp,eigVecsUp,dhdkxUp,dhdkyUp)
@@ -185,24 +177,53 @@ for ii,temp in enumerate(tempList):
     
     kxy = np.real(kappaxy(bandsUp,omegaUp,beta=1/temp) + kappaxy(bandsDn,omegaDn,beta=1/temp))
     print("kxy = ",np.array([kxy]))
-    kappaXyList[ii] = kxy
+    return kxy, nextValues
+    
 
-#######################
-#### VARIOUS PLOTS ####
-#######################
+
+
+
+solLamda = initLamda
+solChiUp = initChiUp
+solChiDn = initChiDn
+tempList = np.concatenate((np.arange(1.2,0.5,-0.05),np.arange(0.5,0.2,-0.01)))
+kappaXyList = np.zeros(len(tempList))
+initialValues = [solLamda,solChiUp,solChiDn]
+for ii,temp in enumerate(tempList):
+    kappaXyList[ii], initialValues = evaluateKappaXY(initialValues,temp,Bfield)
+
+solLamda = +3.2005
+solChiUp = -0.7091
+solChiDn = -0.6824
+temp = 1.0
+BfieldList1 = np.arange(0.01,0.0,-0.002)
+BfieldList2 = np.arange(0.01,0.03,0.002)
+kappaXyListvsB = np.zeros(len(BfieldList1) + len(BfieldList2))
+initialValues = [solLamda,solChiUp,solChiDn]
+for ii,Bfield in enumerate(BfieldList1):
+    kappaXyListvsB[ii], initialValues = evaluateKappaXY(initialValues,temp,Bfield)
+initialValues = [solLamda,solChiUp,solChiDn]
+for ii,Bfield in enumerate(BfieldList2):
+    initialValues = [solLamda,solChiUp,solChiDn]
+    kappaXyListvsB[ii + len(BfieldList1)], initialValues = evaluateKappaXY(initialValues,temp,Bfield)
+
 
 fig,ax = plt.subplots(1)
 Xplt = tempList
 Yplt = np.array(kappaXyList)/tempList
-ax.plot(Xplt, Yplt)
+ax.plot(Xplt,Yplt)
+plt.show()
+
+fig,ax = plt.subplots(1)
+Xplt = np.concatenate((BfieldList1,BfieldList2))
+Yplt = np.array(kappaXyListvsB)
+ax.plot(Xplt,Yplt)
 plt.show()
 
 
-
-
-
-
-
+#######################
+#### VARIOUS PLOTS ####
+#######################
 
 # solLamda = 2.2
 # tUp = (1.1246 + 0.34668j)*2
